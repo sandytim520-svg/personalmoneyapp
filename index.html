@@ -60,6 +60,9 @@
         .dark button span { color: inherit; }
         .dark .rounded-xl span { color: inherit; }
         .dark .p-3 span:not(.text-2xl):not(.text-3xl) { color: #F9FAFB; }
+        /* Dark mode button overrides */
+        .dark .settle-btn { background-color: #6B7280 !important; color: #F9FAFB !important; }
+        .dark .fab-btn { background-color: #F5F5DC !important; color: #1a1a1a !important; }
     </style>
 </head>
 <body>
@@ -122,7 +125,7 @@
                 monthly_summary: "月結摘要", auto_settle: "自動結算", next: "下一步",
                 no_personal_books: "尚無個人帳本", add_first_personal: "新增第一本個人帳本",
                 settings: "設定", sort_order: "排序方式", newest_first: "新到舊", oldest_first: "舊到新",
-                category_mgmt: "類別管理", add_category: "新增類別", edit_category: "編輯類別", edit_rate: "編輯匯率",
+                category_mgmt: "類別管理", add_category: "新增類別", edit_category: "編輯類別", edit_rate: "編輯匯率", default_category: "預設",
                 category_name_zh: "類別名稱(中)", category_name_en: "類別名稱(英)", category_icon: "類別圖示",
                 confirm_delete_category: "確定要刪除此類別嗎？", category_in_use: "此類別正在使用中，無法刪除",
                 member_settings: "成員設定", import_success: "成功匯入", records: "筆交易記錄",
@@ -172,7 +175,7 @@
                 monthly_summary: "Monthly Summary", auto_settle: "Auto Settle", next: "Next",
                 no_personal_books: "No personal ledgers", add_first_personal: "Add first personal ledger",
                 settings: "Settings", sort_order: "Sort Order", newest_first: "Newest First", oldest_first: "Oldest First",
-                category_mgmt: "Category Management", add_category: "Add Category", edit_category: "Edit Category", edit_rate: "Edit Rate",
+                category_mgmt: "Category Management", add_category: "Add Category", edit_category: "Edit Category", edit_rate: "Edit Rate", default_category: "Default",
                 category_name_zh: "Category Name (ZH)", category_name_en: "Category Name (EN)", category_icon: "Category Icon",
                 confirm_delete_category: "Delete this category?", category_in_use: "Category in use, cannot delete",
                 member_settings: "Member Settings", import_success: "Successfully imported", records: "transaction records",
@@ -1401,19 +1404,7 @@
                                         {allCategories.map(cat => {
                                             const isCustom = customCategories.find(c => c.id === cat.id);
                                             return (
-                                                <div 
-                                                    key={cat.id} 
-                                                    className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl ${isCustom ? 'cursor-pointer hover:bg-gray-100 active:scale-98' : ''} transition`}
-                                                    onClick={() => {
-                                                        if (isCustom) {
-                                                            setEditingCategory(cat);
-                                                            setNewCategoryName(cat.name_zh);
-                                                            setNewCategoryNameEn(cat.name_en);
-                                                            setNewCategoryIcon(cat.icon);
-                                                            setIsCategoryEditOpen(true);
-                                                        }
-                                                    }}
-                                                >
+                                                <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-2xl">{cat.icon}</span>
                                                         <div>
@@ -1421,11 +1412,13 @@
                                                             <div className="text-xs text-gray-400">{cat.id}</div>
                                                         </div>
                                                     </div>
-                                                    {isCustom && (
+                                                    {isCustom ? (
                                                         <div className="flex gap-1">
-                                                            <button onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); setNewCategoryName(cat.name_zh); setNewCategoryNameEn(cat.name_en); setNewCategoryIcon(cat.icon); setIsCategoryEditOpen(true); }} className="p-2 text-gray-400 hover:text-blue-500"><Icons.Edit /></button>
-                                                            <button onClick={(e) => { e.stopPropagation(); const isInUse = transactions.some(tx => tx.category === cat.id); if (isInUse) { alert(t.category_in_use); return; } if (confirm(t.confirm_delete_category)) db.ref('settings/customCategories/' + cat.id).remove(); }} className="p-2 text-gray-400 hover:text-red-500"><Icons.Trash /></button>
+                                                            <button onClick={() => { setEditingCategory(cat); setNewCategoryName(cat.name_zh); setNewCategoryNameEn(cat.name_en); setNewCategoryIcon(cat.icon); setIsCategoryEditOpen(true); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Icons.Edit /></button>
+                                                            <button onClick={() => { const isInUse = transactions.some(tx => tx.category === cat.id); if (isInUse) { alert(t.category_in_use); return; } if (confirm(t.confirm_delete_category)) db.ref('settings/customCategories/' + cat.id).remove(); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Icons.Trash /></button>
                                                         </div>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-300 px-2 py-1 bg-gray-100 rounded">{t.default_category || '預設'}</span>
                                                     )}
                                                 </div>
                                             );
@@ -1651,7 +1644,7 @@
                                 })}
                             </div>
                         )}
-                        {(isPersonalBook ? transactions.length > 0 : totalSpent !== 0) && <button onClick={handleSettleUp} className="mt-2 w-full bg-gray-900 text-white py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"><Icons.Check /> {t.settle_period}</button>}
+                        {(isPersonalBook ? transactions.length > 0 : totalSpent !== 0) && <button onClick={handleSettleUp} className="settle-btn mt-2 w-full bg-gray-900 text-white py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"><Icons.Check /> {t.settle_period}</button>}
                     </div>
 
                     {/* Transactions List */}
@@ -1740,7 +1733,7 @@
                         <div ref={bottomRef} />
                     </div>
 
-                    <button onClick={() => openModal(null)} className="fixed bottom-6 right-6 w-16 h-16 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center btn-press z-30"><Icons.Plus /></button>
+                    <button onClick={() => openModal(null)} className="fab-btn fixed bottom-6 right-6 w-16 h-16 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center btn-press z-30"><Icons.Plus /></button>
 
                     {/* Member Detail Modal */}
                     {viewingMemberDebt && !isPersonalBook && (<div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><span>{globalMembers[viewingMemberDebt]}</span> {viewingMemberDebt}</h3><button onClick={() => setViewingMemberDebt(null)} className="p-2 bg-gray-100 rounded-full">✕</button></div><div className="space-y-4">{(() => { const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>{toPay.length > 0 && (<div><p className="text-xs font-bold text-red-500 mb-2 uppercase">{t.payables}</p>{toPay.map((d, i) => (<div key={i} className="flex justify-between items-center bg-red-50 p-3 rounded-xl mb-1"><span className="font-bold text-gray-700">{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span><span className="font-black text-red-500">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span></div>))}</div>)}{toReceive.length > 0 && (<div><p className="text-xs font-bold text-green-600 mb-2 uppercase">{t.receivables}</p>{toReceive.map((d, i) => (<div key={i} className="flex justify-between items-center bg-green-50 p-3 rounded-xl mb-1"><span className="font-bold text-gray-700">{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span><span className="font-black text-green-600">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span></div>))}</div>)}{myExpense.expenseItems.length > 0 && (<div><p className="text-xs font-bold text-blue-600 mb-2 uppercase">{t.my_expense}</p><div className="bg-blue-50 rounded-xl p-3 space-y-2">{myExpense.expenseItems.map((item, i) => (<div key={i} className="flex justify-between items-center text-sm"><div className="flex-1"><span className="font-bold text-gray-700">{item.date.slice(5)}</span><span className="text-gray-600 ml-1">{formatDescription(item.description)}</span><span className="text-gray-400 text-xs ml-1">({item.payer === viewingMemberDebt ? t.self_paid : item.payer + t.other_paid})</span></div><span className="font-bold text-blue-600">{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span></div>))}<div className="border-t border-blue-200 pt-2 mt-2 flex justify-between items-center"><span className="font-bold text-gray-700">{t.my_expense_total}</span><span className="font-black text-blue-700">{currentCurrency.symbol}{Math.round(myExpense.totalExpense).toLocaleString()}</span></div></div></div>)}{toPay.length === 0 && toReceive.length === 0 && myExpense.expenseItems.length === 0 && (<div className="text-center text-gray-400 py-4">{t.settled}</div>)}</>); })()}</div></div></div>)}
