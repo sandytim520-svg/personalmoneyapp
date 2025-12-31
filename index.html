@@ -1703,7 +1703,7 @@
                             return (
                                 <SwipeToDelete key={t_item.id} onDelete={() => handleDelete(t_item.id)}>
                                     <div className="bg-white p-4 rounded-2xl shadow-sm border border-transparent hover:border-gray-200 transition-all">
-                                        <div className="flex items-start gap-3 mb-2">
+                                        <div onClick={() => setViewingFilteredTx(t_item)} className="flex items-start gap-3 mb-2 cursor-pointer active:opacity-70">
                                             <div className="flex flex-col items-center min-w-[3rem]">
                                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl font-bold shadow-sm bg-gray-100">{avatar}</div>
                                                 <span className="text-[10px] font-bold text-gray-400 mt-1 text-center leading-tight">{t_item.payer}</span>
@@ -1736,7 +1736,6 @@
                                             </div>
                                         </div>
                                         <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-50">
-                                            <button onClick={() => setViewingFilteredTx(t_item)} className="p-2 text-gray-400 hover:bg-blue-50 hover:text-blue-500 rounded-lg"><Icons.Eye /></button>
                                             <button onClick={() => openModal(t_item)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"><Icons.Edit /></button>
                                             <button onClick={() => handleDelete(t_item.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg"><Icons.Trash /></button>
                                         </div>
