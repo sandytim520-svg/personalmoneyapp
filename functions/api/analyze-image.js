@@ -84,29 +84,24 @@ export async function onRequest(context) {
             bytes[i] = binaryString.charCodeAt(i);
         }
 
-        console.log('Calling Cloudflare Workers AI...');
+        console.log('Calling Cloudflare Workers AI (LLaVA)...');
 
-        // Call Llama 3.2 Vision model
-        const aiResponse = await env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
+        // Call LLaVA Vision model (no license agreement required)
+        const aiResponse = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
             image: Array.from(bytes),
-            prompt: `Look at this bank app screenshot. List each transaction you can see.
+            prompt: `Analyze this bank app screenshot. Extract all visible transactions.
 
-For each transaction, tell me:
-1. DATE: Convert "Sun 02 Nov 2025" to "2025-11-02"
-2. NAME: The merchant name like "KFC (Sebastopol)"
-3. CATEGORY: Text below the name like "Groceries"
-4. AMOUNT: The number like 24.35 from "-$24.35"
-5. TYPE: "expense" if has minus sign, "income" if no minus
+For each transaction provide:
+- date: format as YYYY-MM-DD (e.g., "Sun 02 Nov 2025" becomes "2025-11-02")
+- name: merchant name
+- cat: category shown below merchant
+- amt: amount as number (e.g., 24.35)
+- exp: true if expense (has minus sign), false if income
 
-IMPORTANT:
-- Skip any transaction where the amount is hidden by a button
-- Only list transactions you can clearly see
-- Keep exact decimal amounts
-
-Return ONLY a JSON array like this:
+Return ONLY a JSON array:
 [{"date":"2025-11-02","name":"KFC","cat":"Food","amt":24.35,"exp":true}]
 
-List all visible transactions now:`
+Skip transactions with hidden amounts. List all visible transactions:`
         });
 
         console.log('AI Response:', JSON.stringify(aiResponse));
@@ -151,7 +146,7 @@ List all visible transactions now:`
             success: transactions.length > 0, 
             transactions: transactions,
             count: transactions.length,
-            source: 'cloudflare-llama-3.2-vision'
+            source: 'cloudflare-llava-1.5'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
