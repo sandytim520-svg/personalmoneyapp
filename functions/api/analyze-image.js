@@ -71,7 +71,7 @@ export async function onRequest(context) {
                 'X-Title': 'Personal Money App'
             },
             body: JSON.stringify({
-                model: 'qwen/qwen-2.5-vl-72b-instruct:free',
+                model: 'nvidia/nemotron-nano-12b-v2-vl:free',
                 messages: [
                     {
                         role: 'user',
@@ -166,7 +166,7 @@ Return ONLY a JSON array, no other text:
             success: transactions.length > 0, 
             transactions: transactions,
             count: transactions.length,
-            source: 'openrouter-qwen-vl-free'
+            source: 'openrouter-nvidia-nemotron-vl'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
