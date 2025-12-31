@@ -1,5 +1,5 @@
 // Cloudflare Pages Function for analyzing bank transaction images
-// Using Google Gemini 1.5 Flash (FREE)
+// Using Google Gemini 1.5 Flash-001 (FREE)
 // File: functions/api/analyze-image.js
 
 export async function onRequest(context) {
@@ -18,7 +18,7 @@ export async function onRequest(context) {
     if (request.method === 'GET') {
         return new Response(JSON.stringify({ 
             status: 'ok', 
-            message: 'Gemini 1.5 Flash API ready',
+            message: 'Gemini 1.5 Flash-001 API ready',
             hasApiKey: !!env.GEMINI_API_KEY
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -78,8 +78,8 @@ export async function onRequest(context) {
 
         console.log('Calling Gemini 1.5 Flash API...');
 
-        // Call Gemini 1.5 Flash API
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`;
+        // Call Gemini 1.5 Flash API (correct model name)
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${env.GEMINI_API_KEY}`;
         
         const geminiResponse = await fetch(apiUrl, {
             method: 'POST',
@@ -179,7 +179,7 @@ If no transactions visible, return: []`
             success: transactions.length > 0, 
             transactions: transactions,
             count: transactions.length,
-            source: 'gemini-1.5-flash'
+            source: 'gemini-1.5-flash-001'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
