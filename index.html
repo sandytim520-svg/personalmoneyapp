@@ -396,7 +396,16 @@
             const activeRate = currentBook.customRate || currentCurrency.rate || 1;
             
             // Combine default and custom categories
-            const allCategories = [...CATEGORIES, ...customCategories];
+            const allCategories = React.useMemo(() => {
+                // Merge CATEGORIES with customCategories, allowing customCategories to override defaults
+                const merged = CATEGORIES.map(cat => {
+                    const customVersion = customCategories.find(c => c.id === cat.id);
+                    return customVersion || cat;
+                });
+                // Add any truly new custom categories (not overriding defaults)
+                const newCustom = customCategories.filter(c => !CATEGORIES.find(d => d.id === c.id));
+                return [...merged, ...newCustom];
+            }, [customCategories]);
 
             const sharedBooks = Object.entries(booksMeta).filter(([id, book]) => !book.isPersonal);
             const personalBooks = Object.entries(booksMeta).filter(([id, book]) => book.isPersonal);
@@ -1403,23 +1412,22 @@
                                     <div className="space-y-2">
                                         {allCategories.map(cat => {
                                             const isCustom = customCategories.find(c => c.id === cat.id);
+                                            const isDefault = CATEGORIES.find(c => c.id === cat.id);
                                             return (
                                                 <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-2xl">{cat.icon}</span>
                                                         <div>
                                                             <div className="font-bold text-gray-800">{lang === 'zh' ? cat.name_zh : cat.name_en}</div>
-                                                            <div className="text-xs text-gray-400">{cat.id}</div>
+                                                            <div className="text-xs text-gray-400">{isDefault && !isCustom ? t.default_category : cat.id}</div>
                                                         </div>
                                                     </div>
-                                                    {isCustom ? (
-                                                        <div className="flex gap-1">
-                                                            <button onClick={() => { setEditingCategory(cat); setNewCategoryName(cat.name_zh); setNewCategoryNameEn(cat.name_en); setNewCategoryIcon(cat.icon); setIsCategoryEditOpen(true); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Icons.Edit /></button>
+                                                    <div className="flex gap-1 items-center">
+                                                        <button onClick={() => { setEditingCategory(cat); setNewCategoryName(cat.name_zh); setNewCategoryNameEn(cat.name_en); setNewCategoryIcon(cat.icon); setIsCategoryEditOpen(true); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Icons.Edit /></button>
+                                                        {isCustom && !isDefault && (
                                                             <button onClick={() => { const isInUse = transactions.some(tx => tx.category === cat.id); if (isInUse) { alert(t.category_in_use); return; } if (confirm(t.confirm_delete_category)) db.ref('settings/customCategories/' + cat.id).remove(); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Icons.Trash /></button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-300 px-2 py-1 bg-gray-100 rounded">{t.default_category || '預設'}</span>
-                                                    )}
+                                                        )}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -1439,7 +1447,7 @@
                         </div>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setIsCategoryEditOpen(false)} className="flex-1 py-3 rounded-xl font-bold text-gray-500 bg-gray-100">{t.cancel}</button>
-                            <button onClick={() => { if (!newCategoryName.trim()) return alert(t.alert_input); if (editingCategory) { db.ref('settings/customCategories/' + editingCategory.id).update({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: newCategoryIcon }); } else { const newId = 'cat_' + Date.now(); db.ref('settings/customCategories/' + newId).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: newCategoryIcon }); } setIsCategoryEditOpen(false); }} className="flex-1 py-3 rounded-xl font-bold text-white bg-black">{t.save}</button>
+                            <button onClick={() => { if (!newCategoryName.trim()) return alert(t.alert_input); if (editingCategory) { db.ref('settings/customCategories/' + editingCategory.id).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: newCategoryIcon }); } else { const newId = 'cat_' + Date.now(); db.ref('settings/customCategories/' + newId).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: newCategoryIcon }); } setIsCategoryEditOpen(false); }} className="flex-1 py-3 rounded-xl font-bold text-white bg-black">{t.save}</button>
                         </div>
                     </div></div>}
 
@@ -1449,7 +1457,7 @@
                             <div className="bg-white px-6 py-4 shadow-sm flex items-center gap-2 sticky top-0 z-10">
                                 <button onClick={() => setIsExpenseDetailOpen(false)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button>
                                 <h2 className="text-xl font-black text-gray-800">{t.expense_details}</h2>
-                                <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-sm font-bold">{expenseTransactions.length}</span>
+                                <span className="bg-red-500 text-white px-2 py-0.5 rounded-full text-sm font-bold">{expenseTransactions.length}</span>
                             </div>
                             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                 {expenseTransactions.length === 0 ? (
@@ -1485,7 +1493,7 @@
                             <div className="bg-white px-6 py-4 shadow-sm flex items-center gap-2 sticky top-0 z-10">
                                 <button onClick={() => setIsIncomeDetailOpen(false)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button>
                                 <h2 className="text-xl font-black text-gray-800">{t.income_details}</h2>
-                                <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-sm font-bold">{incomeTransactions.length}</span>
+                                <span className="bg-green-500 text-white px-2 py-0.5 rounded-full text-sm font-bold">{incomeTransactions.length}</span>
                             </div>
                             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                 {incomeTransactions.length === 0 ? (
