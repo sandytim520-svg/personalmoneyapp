@@ -71,7 +71,7 @@ export async function onRequest(context) {
                 'X-Title': 'Personal Money App'
             },
             body: JSON.stringify({
-                model: 'meta-llama/llama-4-maverick:free',
+                model: 'qwen/qwen-2.5-vl-72b-instruct:free',
                 messages: [
                     {
                         role: 'user',
@@ -166,7 +166,7 @@ Return ONLY a JSON array, no other text:
             success: transactions.length > 0, 
             transactions: transactions,
             count: transactions.length,
-            source: 'openrouter-llama-4-maverick'
+            source: 'openrouter-qwen-vl-free'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
