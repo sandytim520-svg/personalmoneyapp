@@ -33,19 +33,33 @@
         .swipe-content.swiping { transition: none; }
         .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #EF4444; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 1rem; }
         /* Dark Mode Styles */
-        .dark { background-color: #111827 !important; color: #F9FAFB !important; }
-        .dark .bg-white { background-color: #1F2937 !important; }
-        .dark .bg-gray-50 { background-color: #374151 !important; }
-        .dark .bg-gray-100 { background-color: #1F2937 !important; }
-        .dark .text-gray-800 { color: #F9FAFB !important; }
-        .dark .text-gray-700 { color: #E5E7EB !important; }
-        .dark .text-gray-600 { color: #D1D5DB !important; }
-        .dark .text-gray-500 { color: #9CA3AF !important; }
-        .dark .text-gray-400 { color: #9CA3AF !important; }
-        .dark .border-gray-200 { border-color: #374151 !important; }
-        .dark .border-gray-100 { border-color: #374151 !important; }
-        .dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important; }
-        .dark input, .dark select { background-color: #374151 !important; color: #F9FAFB !important; }
+        .dark { background-color: #000000 !important; color: #F9FAFB !important; }
+        .dark .bg-white { background-color: #1a1a1a !important; }
+        .dark .bg-gray-50 { background-color: #2a2a2a !important; }
+        .dark .bg-gray-100 { background-color: #1a1a1a !important; }
+        .dark .bg-green-50 { background-color: #064e3b !important; }
+        .dark .bg-red-50 { background-color: #7f1d1d !important; }
+        .dark .bg-blue-50 { background-color: #1e3a5f !important; }
+        .dark .bg-purple-50 { background-color: #4c1d95 !important; }
+        .dark .text-gray-800, .dark .text-gray-700, .dark .text-gray-600 { color: #F9FAFB !important; }
+        .dark .text-gray-500, .dark .text-gray-400 { color: #9CA3AF !important; }
+        .dark .text-black { color: #F9FAFB !important; }
+        .dark .border-gray-200, .dark .border-gray-100 { border-color: #374151 !important; }
+        .dark .border-black { border-color: #60A5FA !important; }
+        .dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important; }
+        .dark input, .dark select { background-color: #2a2a2a !important; color: #F9FAFB !important; border-color: #374151 !important; }
+        .dark .font-bold { color: inherit; }
+        .dark .slide-in-left { background-color: #1a1a1a !important; }
+        .dark .border-t { border-color: #374151 !important; }
+        .dark .hover\:bg-gray-100:hover { background-color: #374151 !important; }
+        .dark .hover\:bg-gray-200:hover { background-color: #4B5563 !important; }
+        .dark .border-2.border-black { border-color: #60A5FA !important; }
+        .dark .border-2.border-gray-100 { border-color: #374151 !important; }
+        .dark .border-transparent { border-color: transparent !important; }
+        .dark span { color: inherit; }
+        .dark button span { color: inherit; }
+        .dark .rounded-xl span { color: inherit; }
+        .dark .p-3 span:not(.text-2xl):not(.text-3xl) { color: #F9FAFB; }
     </style>
 </head>
 <body>
@@ -1259,6 +1273,10 @@
                         </div>
 
                         <hr className="my-4 border-gray-200" />
+                        {/* Dark/Light Mode Toggle */}
+                        <button onClick={() => setDarkMode(!darkMode)} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200 mb-2">
+                            {darkMode ? <Icons.Sun /> : <Icons.Moon />} {darkMode ? t.light_mode : t.dark_mode}
+                        </button>
                         <button onClick={() => setIsMemberManagerOpen(true)} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200"><Icons.User /> {t.manage_members}</button>
                         <button onClick={() => setIsDeletedBooksOpen(true)} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200 mt-2"><Icons.Trash /> {t.recently_deleted} {Object.keys(deletedBooks).length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{Object.keys(deletedBooks).length}</span>}</button>
                     </div><div className="p-4 border-t bg-white space-y-2">
@@ -1304,7 +1322,7 @@
                     {isMemberManagerOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl h-[600px] flex flex-col"><div className="flex items-center gap-2 mb-4"><button onClick={() => { setIsMemberManagerOpen(false); setIsSettingsOpen(true); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h3 className="text-xl font-black text-gray-800">{t.member_mgmt}</h3></div><div className="flex-1 overflow-y-auto space-y-2 mb-4 no-scrollbar">{Object.entries(globalMembers).map(([name, avatar]) => (<div key={name} className="bg-gray-50 p-3 rounded-xl border border-gray-100">{editingGlobalMember === name ? (<div className="space-y-3"><div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setEditMemberAvatar(a)} className={`text-xl p-2 rounded-lg flex items-center justify-center ${editMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input value={editMemberName} onChange={e => setEditMemberName(e.target.value)} className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-2 font-bold" /><button onClick={saveGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold text-sm shrink-0">{t.save}</button></div></div>) : (<div className="flex items-center justify-between"><span className="font-bold text-lg flex items-center gap-3"><span className="text-2xl">{avatar}</span> {name}</span><div className="flex gap-1"><button onClick={() => startEditGlobalMember(name, avatar)} className="text-gray-400 hover:text-black p-2"><Icons.Edit /></button><button onClick={() => handleDeleteGlobalMember(name)} className="text-gray-400 hover:text-red-500 p-2"><Icons.Trash /></button></div></div>)}</div>))}</div><div className="border-t pt-4"><p className="text-xs font-bold text-gray-400 mb-2">{t.add_member}</p><div className="grid grid-cols-5 gap-2 mb-3 max-h-32 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setNewMemberAvatar(a)} className={`text-2xl p-2 rounded-lg flex items-center justify-center ${newMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input type="text" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder={t.name} className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 font-bold outline-none" /><button onClick={handleAddGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold shrink-0">{t.add}</button></div></div></div></div>}
 
                     {/* Book Settings Modal */}
-                    {isBookMemberSettingsOpen && !isPersonalBook && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800">{t.book_settings}</h3><button onClick={() => setIsBookMemberSettingsOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button></div><p className="text-xs text-gray-400 mb-4">{t.select_members}:</p><div className="max-h-[60vh] overflow-y-auto space-y-2 no-scrollbar">{allDisplayMembers.map((name) => {const avatar = globalMembers[name] || '👻'; return (<button key={name} onClick={() => toggleBookMember(name)} className={`w-full p-3 rounded-xl border-2 font-bold text-lg flex items-center justify-between transition-all ${bookMembers.includes(name) ? 'border-black bg-gray-50 text-black' : 'border-gray-100 text-gray-400'}`}><div className="flex items-center gap-2"><span className="text-2xl">{avatar}</span><span>{name}</span></div>{bookMembers.includes(name) && <Icons.Check />}</button>);})}</div></div></div>}
+                    {isBookMemberSettingsOpen && !isPersonalBook && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800">{t.book_settings}</h3><button onClick={() => setIsBookMemberSettingsOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button></div><p className="text-xs text-gray-400 mb-4">{t.select_members}:</p><div className="max-h-[60vh] overflow-y-auto space-y-2 no-scrollbar">{allDisplayMembers.map((name) => {const avatar = globalMembers[name] || '👻'; return (<button key={name} onClick={() => toggleBookMember(name)} className={`w-full p-3 rounded-xl border-2 font-bold text-lg flex items-center justify-between transition-all ${bookMembers.includes(name) ? 'border-black bg-gray-50' : 'border-gray-100'}`}><div className="flex items-center gap-2"><span className="text-2xl">{avatar}</span><span className="text-gray-800">{name}</span></div>{bookMembers.includes(name) && <Icons.Check />}</button>);})}</div></div></div>}
 
                     {/* Recently Deleted Books Modal */}
                     {isDeletedBooksOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] flex flex-col"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><Icons.Trash /> {t.recently_deleted}</h3><button onClick={() => setIsDeletedBooksOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button></div><div className="flex-1 overflow-y-auto space-y-2 no-scrollbar">{Object.keys(deletedBooks).length === 0 ? (<div className="text-center text-gray-400 py-10">{t.no_deleted_books}</div>) : (Object.entries(deletedBooks).map(([id, book]) => (<div key={id} className="bg-gray-50 p-4 rounded-xl border border-gray-200"><div className="flex justify-between items-start mb-2"><div><div className="font-bold text-gray-800">{book.name}</div><div className="text-xs text-gray-500">{lang === 'zh' ? (CURRENCIES.find(c => c.code === book.currency)?.name_zh || book.currency) : (CURRENCIES.find(c => c.code === book.currency)?.name_en || book.currency)} {t.ledger}</div></div><div className="text-xs text-red-500 font-bold bg-red-50 px-2 py-1 rounded">{getDaysLeft(book.deletedAt)} {t.days_left}</div></div><div className="flex gap-2 mt-3"><button onClick={() => handleRestoreBook(id)} className="flex-1 bg-green-500 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-600"><Icons.Undo /> {t.restore}</button><button onClick={(e) => handlePermanentDeleteBook(id, e)} className="flex-1 bg-red-500 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-1 hover:bg-red-600"><Icons.Trash /> {t.delete}</button></div></div>)))}</div></div></div>}
@@ -1334,29 +1352,13 @@
                                         <p className="text-sm text-gray-500 mb-2">{t.select_members}</p>
                                         {Object.entries(globalMembers).map(([name, avatar]) => (
                                             <div key={name} className={`flex justify-between items-center p-3 rounded-xl transition ${bookMembers.includes(name) ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
-                                                <div className="flex items-center gap-3"><span className="text-2xl">{avatar}</span><span className="font-bold">{name}</span></div>
+                                                <div className="flex items-center gap-3"><span className="text-2xl">{avatar}</span><span className="font-bold text-gray-800">{name}</span></div>
                                                 <button onClick={() => toggleBookMember(name)} className={`w-8 h-8 rounded-full flex items-center justify-center ${bookMembers.includes(name) ? 'bg-green-500 text-white' : 'bg-gray-200'}`}>{bookMembers.includes(name) && <Icons.Check />}</button>
                                             </div>
                                         ))}
                                         <button onClick={() => { setIsMemberManagerOpen(true); setIsSettingsOpen(false); }} className="w-full mt-2 py-2 text-blue-600 font-bold text-sm">{t.manage_members}</button>
                                     </div>
                                 )}
-                            </div>
-
-                            {/* Dark Mode Toggle */}
-                            <div className="bg-white rounded-2xl p-4 shadow-sm">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        {darkMode ? <Icons.Moon /> : <Icons.Sun />}
-                                        <h3 className="font-bold text-gray-800">{darkMode ? t.dark_mode : t.light_mode}</h3>
-                                    </div>
-                                    <button 
-                                        onClick={() => setDarkMode(!darkMode)} 
-                                        className={`w-14 h-8 rounded-full transition-all relative ${darkMode ? 'bg-purple-600' : 'bg-gray-300'}`}
-                                    >
-                                        <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all shadow ${darkMode ? 'right-1' : 'left-1'}`}></div>
-                                    </button>
-                                </div>
                             </div>
 
                             {/* History Button */}
@@ -1741,7 +1743,7 @@
                     <button onClick={() => openModal(null)} className="fixed bottom-6 right-6 w-16 h-16 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center btn-press z-30"><Icons.Plus /></button>
 
                     {/* Member Detail Modal */}
-                    {viewingMemberDebt && !isPersonalBook && (<div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><span>{globalMembers[viewingMemberDebt]}</span> {viewingMemberDebt}</h3><button onClick={() => setViewingMemberDebt(null)} className="p-2 bg-gray-100 rounded-full">✕</button></div><div className="space-y-4">{(() => { const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>{toPay.length > 0 && (<div><p className="text-xs font-bold text-red-500 mb-2 uppercase">{t.payables}</p>{toPay.map((d, i) => (<div key={i} className="flex justify-between items-center bg-red-50 p-3 rounded-xl mb-1"><span className="font-bold text-gray-700">{t.give} {d.to}</span><span className="font-black text-red-500">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span></div>))}</div>)}{toReceive.length > 0 && (<div><p className="text-xs font-bold text-green-600 mb-2 uppercase">{t.receivables}</p>{toReceive.map((d, i) => (<div key={i} className="flex justify-between items-center bg-green-50 p-3 rounded-xl mb-1"><span className="font-bold text-gray-700">{t.receive} {d.from}</span><span className="font-black text-green-600">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span></div>))}</div>)}{myExpense.expenseItems.length > 0 && (<div><p className="text-xs font-bold text-blue-600 mb-2 uppercase">{t.my_expense}</p><div className="bg-blue-50 rounded-xl p-3 space-y-2">{myExpense.expenseItems.map((item, i) => (<div key={i} className="flex justify-between items-center text-sm"><div className="flex-1"><span className="font-bold text-gray-700">{item.date.slice(5)}</span><span className="text-gray-600 ml-1">{item.description}</span><span className="text-gray-400 text-xs ml-1">({item.payer === viewingMemberDebt ? t.self_paid : item.payer + t.other_paid})</span></div><span className="font-bold text-blue-600">{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span></div>))}<div className="border-t border-blue-200 pt-2 mt-2 flex justify-between items-center"><span className="font-bold text-gray-700">{t.my_expense_total}</span><span className="font-black text-blue-700">{currentCurrency.symbol}{Math.round(myExpense.totalExpense).toLocaleString()}</span></div></div></div>)}{toPay.length === 0 && toReceive.length === 0 && myExpense.expenseItems.length === 0 && (<div className="text-center text-gray-400 py-4">{t.settled}</div>)}</>); })()}</div></div></div>)}
+                    {viewingMemberDebt && !isPersonalBook && (<div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><span>{globalMembers[viewingMemberDebt]}</span> {viewingMemberDebt}</h3><button onClick={() => setViewingMemberDebt(null)} className="p-2 bg-gray-100 rounded-full">✕</button></div><div className="space-y-4">{(() => { const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>{toPay.length > 0 && (<div><p className="text-xs font-bold text-red-500 mb-2 uppercase">{t.payables}</p>{toPay.map((d, i) => (<div key={i} className="flex justify-between items-center bg-red-50 p-3 rounded-xl mb-1"><span className="font-bold text-gray-700">{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span><span className="font-black text-red-500">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span></div>))}</div>)}{toReceive.length > 0 && (<div><p className="text-xs font-bold text-green-600 mb-2 uppercase">{t.receivables}</p>{toReceive.map((d, i) => (<div key={i} className="flex justify-between items-center bg-green-50 p-3 rounded-xl mb-1"><span className="font-bold text-gray-700">{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span><span className="font-black text-green-600">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span></div>))}</div>)}{myExpense.expenseItems.length > 0 && (<div><p className="text-xs font-bold text-blue-600 mb-2 uppercase">{t.my_expense}</p><div className="bg-blue-50 rounded-xl p-3 space-y-2">{myExpense.expenseItems.map((item, i) => (<div key={i} className="flex justify-between items-center text-sm"><div className="flex-1"><span className="font-bold text-gray-700">{item.date.slice(5)}</span><span className="text-gray-600 ml-1">{formatDescription(item.description)}</span><span className="text-gray-400 text-xs ml-1">({item.payer === viewingMemberDebt ? t.self_paid : item.payer + t.other_paid})</span></div><span className="font-bold text-blue-600">{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span></div>))}<div className="border-t border-blue-200 pt-2 mt-2 flex justify-between items-center"><span className="font-bold text-gray-700">{t.my_expense_total}</span><span className="font-black text-blue-700">{currentCurrency.symbol}{Math.round(myExpense.totalExpense).toLocaleString()}</span></div></div></div>)}{toPay.length === 0 && toReceive.length === 0 && myExpense.expenseItems.length === 0 && (<div className="text-center text-gray-400 py-4">{t.settled}</div>)}</>); })()}</div></div></div>)}
 
                     {/* Transaction Modal */}
                     {isModalOpen && (<div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"><div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeModal}></div><div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 modal-enter relative z-50 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
