@@ -44,6 +44,11 @@ export async function onRequest(context) {
             });
         }
 
+        // Debug: Log API key info (first 10 chars only for security)
+        const keyPreview = env.GEMINI_API_KEY.substring(0, 10) + '...';
+        console.log('Using API Key:', keyPreview);
+        console.log('API Key length:', env.GEMINI_API_KEY.length);
+
         const { image } = await request.json();
         
         if (!image) {
@@ -125,9 +130,12 @@ If no transactions visible, return: []`
         if (!geminiResponse.ok) {
             const errorText = await geminiResponse.text();
             console.error('Gemini API error:', geminiResponse.status, errorText);
+            console.error('API Key used (first 10):', env.GEMINI_API_KEY.substring(0, 10));
             return new Response(JSON.stringify({ 
                 error: `Gemini API error: ${geminiResponse.status}`,
                 details: errorText,
+                keyPreview: env.GEMINI_API_KEY.substring(0, 10) + '...',
+                keyLength: env.GEMINI_API_KEY.length,
                 success: false,
                 transactions: []
             }), {
