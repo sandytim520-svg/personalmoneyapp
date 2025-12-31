@@ -71,7 +71,7 @@ export async function onRequest(context) {
                 'X-Title': 'Personal Money App'
             },
             body: JSON.stringify({
-                model: 'google/gemini-2.0-flash-exp:free',
+                model: 'meta-llama/llama-4-maverick:free',
                 messages: [
                     {
                         role: 'user',
@@ -166,7 +166,7 @@ Return ONLY a JSON array, no other text:
             success: transactions.length > 0, 
             transactions: transactions,
             count: transactions.length,
-            source: 'openrouter-gemini-free'
+            source: 'openrouter-llama-4-maverick'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
