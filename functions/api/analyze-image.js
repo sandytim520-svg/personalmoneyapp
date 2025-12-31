@@ -1,5 +1,5 @@
 // Cloudflare Pages Function for analyzing bank transaction images
-// Using Google Gemini 2.0 Flash (FREE - New API Key)
+// Using Google Gemini 2.0 Flash-Lite (FREE - Higher Quota)
 // File: functions/api/analyze-image.js
 
 export async function onRequest(context) {
@@ -18,7 +18,7 @@ export async function onRequest(context) {
     if (request.method === 'GET') {
         return new Response(JSON.stringify({ 
             status: 'ok', 
-            message: 'Gemini 2.0 Flash API ready',
+            message: 'Gemini 2.0 Flash-Lite API ready',
             hasApiKey: !!env.GEMINI_API_KEY
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -81,10 +81,10 @@ export async function onRequest(context) {
             });
         }
 
-        console.log('Calling Gemini 2.0 Flash API...');
+        console.log('Calling Gemini 2.0 Flash-Lite API...');
 
-        // Call Gemini 2.0 Flash API
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+        // Call Gemini 2.0 Flash-Lite API (higher quota limits)
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${env.GEMINI_API_KEY}`;
         
         const geminiResponse = await fetch(apiUrl, {
             method: 'POST',
@@ -187,7 +187,7 @@ If no transactions visible, return: []`
             success: transactions.length > 0, 
             transactions: transactions,
             count: transactions.length,
-            source: 'gemini-2.0-flash'
+            source: 'gemini-2.0-flash-lite'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
