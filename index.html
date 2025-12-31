@@ -32,6 +32,20 @@
         .swipe-content { transition: transform 0.3s ease; }
         .swipe-content.swiping { transition: none; }
         .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #EF4444; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 1rem; }
+        /* Dark Mode Styles */
+        .dark { background-color: #111827 !important; color: #F9FAFB !important; }
+        .dark .bg-white { background-color: #1F2937 !important; }
+        .dark .bg-gray-50 { background-color: #374151 !important; }
+        .dark .bg-gray-100 { background-color: #1F2937 !important; }
+        .dark .text-gray-800 { color: #F9FAFB !important; }
+        .dark .text-gray-700 { color: #E5E7EB !important; }
+        .dark .text-gray-600 { color: #D1D5DB !important; }
+        .dark .text-gray-500 { color: #9CA3AF !important; }
+        .dark .text-gray-400 { color: #9CA3AF !important; }
+        .dark .border-gray-200 { border-color: #374151 !important; }
+        .dark .border-gray-100 { border-color: #374151 !important; }
+        .dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3) !important; }
+        .dark input, .dark select { background-color: #374151 !important; color: #F9FAFB !important; }
     </style>
 </head>
 <body>
@@ -94,11 +108,12 @@
                 monthly_summary: "月結摘要", auto_settle: "自動結算", next: "下一步",
                 no_personal_books: "尚無個人帳本", add_first_personal: "新增第一本個人帳本",
                 settings: "設定", sort_order: "排序方式", newest_first: "新到舊", oldest_first: "舊到新",
-                category_mgmt: "類別管理", add_category: "新增類別", edit_category: "編輯類別",
+                category_mgmt: "類別管理", add_category: "新增類別", edit_category: "編輯類別", edit_rate: "編輯匯率",
                 category_name_zh: "類別名稱(中)", category_name_en: "類別名稱(英)", category_icon: "類別圖示",
                 confirm_delete_category: "確定要刪除此類別嗎？", category_in_use: "此類別正在使用中，無法刪除",
                 member_settings: "成員設定", import_success: "成功匯入", records: "筆交易記錄",
-                no_valid_records: "沒有有效的交易記錄可匯入"
+                no_valid_records: "沒有有效的交易記錄可匯入", dark_mode: "深色模式", light_mode: "淺色模式",
+                expense_details: "支出明細", income_details: "收入明細"
             },
             en: {
                 app_title: "Split Bill", book_list: "Ledgers", default_book: "Default Ledger", ledger: "Ledger",
@@ -143,11 +158,12 @@
                 monthly_summary: "Monthly Summary", auto_settle: "Auto Settle", next: "Next",
                 no_personal_books: "No personal ledgers", add_first_personal: "Add first personal ledger",
                 settings: "Settings", sort_order: "Sort Order", newest_first: "Newest First", oldest_first: "Oldest First",
-                category_mgmt: "Category Management", add_category: "Add Category", edit_category: "Edit Category",
+                category_mgmt: "Category Management", add_category: "Add Category", edit_category: "Edit Category", edit_rate: "Edit Rate",
                 category_name_zh: "Category Name (ZH)", category_name_en: "Category Name (EN)", category_icon: "Category Icon",
                 confirm_delete_category: "Delete this category?", category_in_use: "Category in use, cannot delete",
                 member_settings: "Member Settings", import_success: "Successfully imported", records: "transaction records",
-                no_valid_records: "No valid records to import"
+                no_valid_records: "No valid records to import", dark_mode: "Dark Mode", light_mode: "Light Mode",
+                expense_details: "Expense Details", income_details: "Income Details"
             }
         };
 
@@ -161,7 +177,7 @@
             { code: 'HKD', symbol: 'HK$', flag: '🇭🇰', rate: 4.1, name_zh: '港幣', name_en: 'Hong Kong Dollar' },
             { code: 'THB', symbol: '฿', flag: '🇹🇭', rate: 0.9, name_zh: '泰銖', name_en: 'Thai Baht' },
             { code: 'GBP', symbol: '£', flag: '🇬🇧', rate: 41.0, name_zh: '英鎊', name_en: 'British Pound' },
-            { code: 'AUD', symbol: 'A$', flag: '🇦🇺', rate: 21.5, name_zh: '澳幣', name_en: 'Australian Dollar' },
+            { code: 'AUD', symbol: 'AUD$', flag: '🇦🇺', rate: 21.5, name_zh: '澳幣', name_en: 'Australian Dollar' },
             { code: 'SGD', symbol: 'S$', flag: '🇸🇬', rate: 24.0, name_zh: '新幣', name_en: 'Singapore Dollar' },
             { code: 'VND', symbol: '₫', flag: '🇻🇳', rate: 0.0013, name_zh: '越南盾', name_en: 'Vietnamese Dong' },
             { code: 'MYR', symbol: 'RM', flag: '🇲🇾', rate: 7.0, name_zh: '馬幣', name_en: 'Malaysian Ringgit' },
@@ -265,6 +281,8 @@
             TrendUp: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>,
             TrendDown: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>,
             Category: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>,
+            Moon: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>,
+            Sun: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
         };
 
         const fetchExchangeRate = async (currencyCode) => {
@@ -340,6 +358,14 @@
             const [newCategoryName, setNewCategoryName] = useState('');
             const [newCategoryNameEn, setNewCategoryNameEn] = useState('');
             const [newCategoryIcon, setNewCategoryIcon] = useState('📝');
+            // Dark Mode State
+            const [darkMode, setDarkMode] = useState(() => {
+                const saved = localStorage.getItem('darkMode');
+                return saved ? JSON.parse(saved) : false;
+            });
+            // Expense/Income Detail Modal State
+            const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
+            const [isIncomeDetailOpen, setIsIncomeDetailOpen] = useState(false);
             const videoRef = useRef(null);
             const streamRef = useRef(null);
             const fileInputRef = useRef(null);
@@ -373,6 +399,39 @@
                 });
                 return { totalExpense, totalIncome, balance: totalIncome - totalExpense };
             };
+
+            // Helper function to format description (remove brackets and simplify Iglu)
+            const formatDescription = (description) => {
+                if (!description) return '';
+                // Remove content in parentheses for AI-recognized items
+                let formatted = description.replace(/\s*\([^)]*\)\s*$/, '');
+                // If contains "Iglu" (case insensitive), replace with just "Iglu"
+                if (/iglu/i.test(formatted)) {
+                    formatted = 'Iglu';
+                }
+                return formatted;
+            };
+
+            // Get expense and income transactions for detail views
+            const expenseTransactions = React.useMemo(() => {
+                return transactions.filter(tx => tx.txType !== 'income');
+            }, [transactions]);
+
+            const incomeTransactions = React.useMemo(() => {
+                return transactions.filter(tx => tx.txType === 'income');
+            }, [transactions]);
+
+            // Apply dark mode to body
+            useEffect(() => {
+                if (darkMode) {
+                    document.body.classList.add('dark');
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.body.classList.remove('dark');
+                    document.documentElement.classList.remove('dark');
+                }
+                localStorage.setItem('darkMode', JSON.stringify(darkMode));
+            }, [darkMode]);
 
             useEffect(() => {
                 const metaRef = db.ref('booksMeta');
@@ -1284,6 +1343,22 @@
                                 )}
                             </div>
 
+                            {/* Dark Mode Toggle */}
+                            <div className="bg-white rounded-2xl p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        {darkMode ? <Icons.Moon /> : <Icons.Sun />}
+                                        <h3 className="font-bold text-gray-800">{darkMode ? t.dark_mode : t.light_mode}</h3>
+                                    </div>
+                                    <button 
+                                        onClick={() => setDarkMode(!darkMode)} 
+                                        className={`w-14 h-8 rounded-full transition-all relative ${darkMode ? 'bg-purple-600' : 'bg-gray-300'}`}
+                                    >
+                                        <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all shadow ${darkMode ? 'right-1' : 'left-1'}`}></div>
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* History Button */}
                             <button onClick={() => { setIsHistoryOpen(true); setIsSettingsOpen(false); setViewingSettlement(null); setIsExportMode(false); setSelectedSettlements([]); }} className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
                                 <div className="flex items-center gap-2"><Icons.History /><span className="font-bold text-gray-800">{t.history}</span></div>
@@ -1308,7 +1383,7 @@
                                             <div className="text-xs text-gray-500">1 {currentBook.currency} =</div>
                                             <div className="text-xl font-black text-gray-800">{activeRate} TWD</div>
                                         </div>
-                                        <button onClick={() => { openRateModal(); setIsSettingsOpen(false); }} className="px-4 py-3 bg-blue-500 text-white rounded-xl font-bold">{t.edit_category}</button>
+                                        <button onClick={() => { openRateModal(); setIsSettingsOpen(false); }} className="px-4 py-3 bg-blue-500 text-white rounded-xl font-bold">{t.edit_rate}</button>
                                     </div>
                                 </div>
                             )}
@@ -1321,23 +1396,38 @@
                                         <button onClick={() => { setEditingCategory(null); setNewCategoryName(''); setNewCategoryNameEn(''); setNewCategoryIcon('📝'); setIsCategoryEditOpen(true); }} className="px-3 py-1.5 bg-black text-white rounded-lg text-sm font-bold">+ {t.add}</button>
                                     </div>
                                     <div className="space-y-2">
-                                        {allCategories.map(cat => (
-                                            <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-2xl">{cat.icon}</span>
-                                                    <div>
-                                                        <div className="font-bold text-gray-800">{lang === 'zh' ? cat.name_zh : cat.name_en}</div>
-                                                        <div className="text-xs text-gray-400">{cat.id}</div>
+                                        {allCategories.map(cat => {
+                                            const isCustom = customCategories.find(c => c.id === cat.id);
+                                            return (
+                                                <div 
+                                                    key={cat.id} 
+                                                    className={`flex items-center justify-between p-3 bg-gray-50 rounded-xl ${isCustom ? 'cursor-pointer hover:bg-gray-100 active:scale-98' : ''} transition`}
+                                                    onClick={() => {
+                                                        if (isCustom) {
+                                                            setEditingCategory(cat);
+                                                            setNewCategoryName(cat.name_zh);
+                                                            setNewCategoryNameEn(cat.name_en);
+                                                            setNewCategoryIcon(cat.icon);
+                                                            setIsCategoryEditOpen(true);
+                                                        }
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-2xl">{cat.icon}</span>
+                                                        <div>
+                                                            <div className="font-bold text-gray-800">{lang === 'zh' ? cat.name_zh : cat.name_en}</div>
+                                                            <div className="text-xs text-gray-400">{cat.id}</div>
+                                                        </div>
                                                     </div>
+                                                    {isCustom && (
+                                                        <div className="flex gap-1">
+                                                            <button onClick={(e) => { e.stopPropagation(); setEditingCategory(cat); setNewCategoryName(cat.name_zh); setNewCategoryNameEn(cat.name_en); setNewCategoryIcon(cat.icon); setIsCategoryEditOpen(true); }} className="p-2 text-gray-400 hover:text-blue-500"><Icons.Edit /></button>
+                                                            <button onClick={(e) => { e.stopPropagation(); const isInUse = transactions.some(tx => tx.category === cat.id); if (isInUse) { alert(t.category_in_use); return; } if (confirm(t.confirm_delete_category)) db.ref('settings/customCategories/' + cat.id).remove(); }} className="p-2 text-gray-400 hover:text-red-500"><Icons.Trash /></button>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                {customCategories.find(c => c.id === cat.id) && (
-                                                    <div className="flex gap-1">
-                                                        <button onClick={() => { setEditingCategory(cat); setNewCategoryName(cat.name_zh); setNewCategoryNameEn(cat.name_en); setNewCategoryIcon(cat.icon); setIsCategoryEditOpen(true); }} className="p-2 text-gray-400 hover:text-blue-500"><Icons.Edit /></button>
-                                                        <button onClick={() => { const isInUse = transactions.some(tx => tx.category === cat.id); if (isInUse) { alert(t.category_in_use); return; } if (confirm(t.confirm_delete_category)) db.ref('settings/customCategories/' + cat.id).remove(); }} className="p-2 text-gray-400 hover:text-red-500"><Icons.Trash /></button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -1357,6 +1447,78 @@
                             <button onClick={() => { if (!newCategoryName.trim()) return alert(t.alert_input); if (editingCategory) { db.ref('settings/customCategories/' + editingCategory.id).update({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: newCategoryIcon }); } else { const newId = 'cat_' + Date.now(); db.ref('settings/customCategories/' + newId).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: newCategoryIcon }); } setIsCategoryEditOpen(false); }} className="flex-1 py-3 rounded-xl font-bold text-white bg-black">{t.save}</button>
                         </div>
                     </div></div>}
+
+                    {/* Expense Detail Modal */}
+                    {isExpenseDetailOpen && isPersonalBook && (
+                        <div className="fixed inset-0 z-[75] bg-gray-100 flex flex-col modal-enter">
+                            <div className="bg-white px-6 py-4 shadow-sm flex items-center gap-2 sticky top-0 z-10">
+                                <button onClick={() => setIsExpenseDetailOpen(false)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button>
+                                <h2 className="text-xl font-black text-gray-800">{t.expense_details}</h2>
+                                <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-sm font-bold">{expenseTransactions.length}</span>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                {expenseTransactions.length === 0 ? (
+                                    <div className="text-center py-20 text-gray-400">{t.no_records}</div>
+                                ) : (
+                                    expenseTransactions.map((t_item) => {
+                                        const categoryInfo = allCategories.find(c => c.id === t_item.category) || allCategories[allCategories.length - 1];
+                                        return (
+                                            <div key={t_item.id} className="bg-white p-4 rounded-2xl shadow-sm">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl bg-gray-100">{categoryInfo.icon}</div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-xs font-bold text-gray-400 mb-0.5">{t_item.date}</div>
+                                                        <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}</p>
+                                                        <p className="text-xs text-gray-400 mt-1">{lang === 'zh' ? categoryInfo.name_zh : categoryInfo.name_en}</p>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-xl font-black text-red-600">-{currentCurrency.symbol}{t_item.amount.toLocaleString()}</p>
+                                                        {t_item.currency !== 'TWD' && <p className="text-xs font-bold text-gray-400 mt-1">≈ NT${(t_item.amountTWD || Math.round(t_item.amount * activeRate)).toLocaleString()}</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Income Detail Modal */}
+                    {isIncomeDetailOpen && isPersonalBook && (
+                        <div className="fixed inset-0 z-[75] bg-gray-100 flex flex-col modal-enter">
+                            <div className="bg-white px-6 py-4 shadow-sm flex items-center gap-2 sticky top-0 z-10">
+                                <button onClick={() => setIsIncomeDetailOpen(false)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button>
+                                <h2 className="text-xl font-black text-gray-800">{t.income_details}</h2>
+                                <span className="bg-green-100 text-green-600 px-2 py-0.5 rounded-full text-sm font-bold">{incomeTransactions.length}</span>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                {incomeTransactions.length === 0 ? (
+                                    <div className="text-center py-20 text-gray-400">{t.no_records}</div>
+                                ) : (
+                                    incomeTransactions.map((t_item) => {
+                                        const categoryInfo = allCategories.find(c => c.id === t_item.category) || allCategories[allCategories.length - 1];
+                                        return (
+                                            <div key={t_item.id} className="bg-white p-4 rounded-2xl shadow-sm">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl bg-gray-100">{categoryInfo.icon}</div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-xs font-bold text-gray-400 mb-0.5">{t_item.date}</div>
+                                                        <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}</p>
+                                                        <p className="text-xs text-gray-400 mt-1">{lang === 'zh' ? categoryInfo.name_zh : categoryInfo.name_en}</p>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-xl font-black text-green-600">+{currentCurrency.symbol}{t_item.amount.toLocaleString()}</p>
+                                                        {t_item.currency !== 'TWD' && <p className="text-xs font-bold text-gray-400 mt-1">≈ NT${(t_item.amountTWD || Math.round(t_item.amount * activeRate)).toLocaleString()}</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Scan Modal */}
                     {isScanOpen && <div className="fixed inset-0 z-[80] bg-black flex flex-col">
@@ -1436,15 +1598,32 @@
                                     <div className={`text-3xl font-black ${monthlyStats.balance >= 0 ? '' : 'text-red-200'}`}>
                                         {monthlyStats.balance >= 0 ? '+' : ''}{currentCurrency.symbol}{Math.round(monthlyStats.balance).toLocaleString()}
                                     </div>
+                                    {currentBook.currency !== 'TWD' && (
+                                        <div className="text-sm font-bold opacity-70 mt-1">
+                                            ≈ NT${Math.round(monthlyStats.balance * activeRate).toLocaleString()}
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 mt-3">
-                                    <div className="bg-red-50 rounded-xl p-3">
+                                    <div 
+                                        className="bg-red-50 rounded-xl p-3 cursor-pointer hover:bg-red-100 transition active:scale-95"
+                                        onClick={() => setIsExpenseDetailOpen(true)}
+                                    >
                                         <div className="flex items-center gap-1 text-xs font-bold text-red-500 mb-1"><Icons.TrendDown /> {t.total_expense}</div>
                                         <div className="text-xl font-black text-red-600">{currentCurrency.symbol}{Math.round(monthlyStats.totalExpense).toLocaleString()}</div>
+                                        {currentBook.currency !== 'TWD' && (
+                                            <div className="text-xs text-red-400 mt-1">≈ NT${Math.round(monthlyStats.totalExpense * activeRate).toLocaleString()}</div>
+                                        )}
                                     </div>
-                                    <div className="bg-green-50 rounded-xl p-3">
+                                    <div 
+                                        className="bg-green-50 rounded-xl p-3 cursor-pointer hover:bg-green-100 transition active:scale-95"
+                                        onClick={() => setIsIncomeDetailOpen(true)}
+                                    >
                                         <div className="flex items-center gap-1 text-xs font-bold text-green-500 mb-1"><Icons.TrendUp /> {t.total_income}</div>
                                         <div className="text-xl font-black text-green-600">{currentCurrency.symbol}{Math.round(monthlyStats.totalIncome).toLocaleString()}</div>
+                                        {currentBook.currency !== 'TWD' && (
+                                            <div className="text-xs text-green-400 mt-1">≈ NT${Math.round(monthlyStats.totalIncome * activeRate).toLocaleString()}</div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1494,7 +1673,7 @@
                                                 <div className="flex-1 min-w-0">
                                                     <div className="text-xs font-bold text-gray-400 mb-0.5">{t_item.date}</div>
                                                     <div className="flex items-start justify-between gap-3">
-                                                        <p className="font-bold text-gray-800 text-lg leading-tight">{t_item.description}</p>
+                                                        <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}</p>
                                                         <div className="text-right shrink-0">
                                                             <p className={`text-xl font-black ${t_item.txType === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                                                                 {t_item.txType === 'income' ? '+' : '-'}{currentCurrency.symbol}{t_item.amount.toLocaleString()}
@@ -1525,7 +1704,7 @@
                                                 <div className="text-xs font-bold text-gray-400 mb-0.5">{t_item.date}</div>
                                                 {isLongDesc ? (
                                                     <div>
-                                                        <p className="font-bold text-gray-800 text-lg leading-tight">{t_item.description}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
+                                                        <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
                                                         <div className="flex items-center justify-between mt-1">
                                                             <p className="text-xs text-gray-400 flex items-center gap-1"><Icons.Users /> {involvedCount} {t.involved}</p>
                                                             <div className="text-right">
@@ -1537,7 +1716,7 @@
                                                 ) : (
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="min-w-0">
-                                                            <p className="font-bold text-gray-800 text-lg leading-tight">{t_item.description}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
+                                                            <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
                                                             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Icons.Users /> {involvedCount} {t.involved}</p>
                                                         </div>
                                                         <div className="text-right shrink-0">
@@ -1582,65 +1761,4 @@
                         ) : (
                             <div className="space-y-5">
                                 <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.payer}</label><div className="flex flex-wrap gap-3">{bookMembers.map((m) => { const isSelected = formData.payer === m; return (<button key={m} onClick={() => setFormData({...formData, payer: m})} className={`flex-1 min-w-[30%] p-3 rounded-2xl border-2 font-bold text-base transition-all flex flex-col items-center gap-1 ${isSelected ? 'border-black bg-black text-white' : 'border-gray-100 text-gray-400'}`}><span className="text-xl">{globalMembers[m] || '👻'}</span>{m}</button>) })}</div></div>
-                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.split_type}</label><div className="grid grid-cols-2 gap-3"><button onClick={() => handleSplitTypeChange('equal')} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all ${formData.splitType === 'equal' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 text-gray-400'}`}>{t.equal_split}</button><button onClick={() => handleSplitTypeChange('custom')} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all ${formData.splitType === 'custom' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-100 text-gray-400'}`}>{t.custom_split}</button></div></div>
-                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.split_target}</label><div className="space-y-2">{bookMembers.map(m => { const isIncluded = (formData.involved || bookMembers).includes(m); const perPersonAmount = formData.splitType === 'equal' && formData.amount && formData.involved.length > 0 ? (parseFloat(formData.amount) / formData.involved.length) : 0; return (<div key={m} className="space-y-1"><button onClick={() => toggleInvolvedMember(m)} className={`w-full p-2 rounded-xl border font-bold text-sm flex items-center gap-2 ${isIncluded ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-gray-300'}`}><div className={`w-4 h-4 rounded-full border ${isIncluded ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}></div><span className="text-lg">{globalMembers[m] || '👻'}</span>{m}</button>{isIncluded && formData.splitType === 'equal' && perPersonAmount > 0 && (<div className="ml-6 text-xs text-green-600 font-bold">{t.per_person}: {currentCurrency.symbol}{Math.round(perPersonAmount).toLocaleString()}</div>)}{isIncluded && formData.splitType === 'custom' && (<div className="ml-6"><input type="number" inputMode="decimal" value={formData.customAmounts[m] || ''} onChange={(e) => handleCustomAmountChange(m, e.target.value)} placeholder="0" className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-xl text-sm font-bold text-purple-700 outline-none" /></div>)}</div>); })}</div>{formData.splitType === 'custom' && (<div className="mt-3 p-3 bg-purple-100 rounded-xl flex justify-between items-center"><span className="font-bold text-purple-700">{t.total_amount}</span><span className="font-black text-purple-800 text-xl">{currentCurrency.symbol}{calculateCustomTotal().toLocaleString()}</span></div>)}</div>
-                                {formData.splitType === 'equal' && (<div className="flex gap-3"><div className="flex-1"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.amount}</label><input type="number" inputMode="decimal" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-2xl font-black text-gray-800 outline-none" placeholder="0" /></div>{currentBook.currency !== 'TWD' && (<div className="w-28"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({...formData, exchangeRate: e.target.value})} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-xl font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}</div>)}
-                                {formData.splitType === 'custom' && currentBook.currency !== 'TWD' && (<div className="w-full"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({...formData, exchangeRate: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-lg font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}
-                                <div className="grid grid-cols-3 gap-3"><div><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.date}</label><input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full px-2 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-800 outline-none" /></div><div className="col-span-2"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.item}</label><input type="text" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="e.g. Dinner" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-base font-bold text-gray-800 outline-none" /></div></div>
-                                <button onClick={handleSave} className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-xl btn-press mt-4">{editingId ? t.update : t.confirm}</button>
-                            </div>
-                        )}
-                    </div></div>)}
-
-                    {/* History Modal */}
-                    {isHistoryOpen && (<div className="fixed inset-0 z-50 bg-gray-100 flex flex-col modal-enter"><div className="bg-white px-6 py-4 shadow-sm flex items-center justify-between sticky top-0 z-10">{viewingSettlement ? (<div className="flex items-center gap-2"><button onClick={() => setViewingSettlement(null)} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h2 className="text-xl font-black text-gray-800">{t.settle_details}</h2></div>) : (<div className="flex items-center gap-2"><button onClick={() => { setIsHistoryOpen(false); setIsSettingsOpen(true); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h2 className="text-xl font-black text-gray-800">📜 {t.history}</h2>{settlements.length > 0 && (<button onClick={() => setIsExportMode(!isExportMode)} className={`ml-2 px-3 py-1 rounded-lg text-sm font-bold flex items-center gap-1 ${isExportMode ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}><Icons.Download /> {t.export}</button>)}</div>)}</div>
-                        {isExportMode && !viewingSettlement && settlements.length > 0 && (<div className="bg-blue-50 px-6 py-3 flex items-center justify-between border-b border-blue-100"><div className="flex items-center gap-3"><button onClick={toggleSelectAll} className="text-sm font-bold text-blue-600 hover:text-blue-800">{selectedSettlements.length === settlements.length ? t.deselect_all : t.select_all}</button><span className="text-sm text-blue-600">({selectedSettlements.length} / {settlements.length})</span></div><div className="flex gap-2"><button onClick={() => exportToExcel(settlements.filter(s => selectedSettlements.includes(s.id)))} disabled={selectedSettlements.length === 0} className={`px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 ${selectedSettlements.length > 0 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-400'}`}><Icons.Download /> {t.export_selected}</button><button onClick={() => exportToExcel(settlements)} className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-sm font-bold flex items-center gap-1"><Icons.Download /> {t.export_all}</button></div></div>)}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {viewingSettlement ? (
-                                <div className="space-y-4">
-                                    <div className="bg-white p-6 rounded-3xl shadow-sm text-center">
-                                        <p className="text-gray-400 text-xs font-bold uppercase mb-1">{viewingSettlement.settledDate} {t.settled}</p>
-                                        {isPersonalBook && viewingSettlement.balance !== undefined ? (
-                                            <div>
-                                                <p className={`text-3xl font-black mb-2 ${viewingSettlement.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{viewingSettlement.balance >= 0 ? '+' : ''}{currentCurrency.symbol}{Math.round(viewingSettlement.balance).toLocaleString()}</p>
-                                                <div className="grid grid-cols-2 gap-3 mt-4">
-                                                    <div className="bg-red-50 rounded-xl p-3"><div className="text-xs font-bold text-red-500 mb-1">{t.total_expense}</div><div className="text-lg font-black text-red-600">{currentCurrency.symbol}{Math.round(viewingSettlement.totalExpense || 0).toLocaleString()}</div></div>
-                                                    <div className="bg-green-50 rounded-xl p-3"><div className="text-xs font-bold text-green-500 mb-1">{t.total_income}</div><div className="text-lg font-black text-green-600">{currentCurrency.symbol}{Math.round(viewingSettlement.totalIncome || 0).toLocaleString()}</div></div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="text-3xl font-black text-gray-800 mb-2">{currentCurrency.symbol}{viewingSettlement.totalAmount?.toLocaleString()}</p>
-                                        )}
-                                        <div className="grid grid-cols-2 gap-3 mt-6"><button onClick={handleRollbackSettlement} className="flex items-center justify-center gap-2 bg-indigo-50 text-indigo-600 py-3 rounded-xl font-bold hover:bg-indigo-100 transition"><Icons.Undo /> {t.undo}</button><button onClick={handleDeleteSettlement} className="flex items-center justify-center gap-2 bg-red-50 text-red-500 py-3 rounded-xl font-bold hover:bg-red-100 transition"><Icons.Trash /> {t.delete}</button></div>
-                                    </div>
-                                    {!isPersonalBook && renderHistoryDetail(viewingSettlement.transactionsSnapshot)}
-                                    {viewingSettlement.transactionsSnapshot && (<div className="mt-6 pb-4"><h4 className="font-bold text-gray-500 text-xs uppercase mb-3">{t.included_tx} ({viewingSettlement.transactionsSnapshot.length})</h4><div className="space-y-2">{viewingSettlement.transactionsSnapshot.map((t_item, idx) => { const avatar = globalMembers[t_item.payer] || '👻'; const categoryInfo = allCategories.find(c => c.id === t_item.category) || allCategories[allCategories.length - 1]; return (<div key={idx} className="bg-white p-3 rounded-xl border border-gray-200 flex justify-between items-center"><div className="flex items-center gap-3"><div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-lg">{isPersonalBook ? categoryInfo.icon : avatar}</div><div><div className="font-bold text-gray-800 text-sm">{t_item.description}</div><div className="text-[10px] text-gray-400">{t_item.date} {!isPersonalBook && <>• {t_item.payer}</>}{t_item.splitType === 'custom' && <span className="ml-1 text-purple-500">(AB分)</span>}</div></div></div><div className={`font-bold ${t_item.txType === 'income' ? 'text-green-600' : 'text-gray-800'}`}>{t_item.txType === 'income' ? '+' : ''}{currentCurrency.symbol}{t_item.amount.toLocaleString()}</div></div>); })}</div></div>)}
-                                </div>
-                            ) : (
-                                settlements.length === 0 ? (<div className="text-center py-20 text-gray-400">{t.no_payment}</div>) : (settlements.map((s, index) => (
-                                    <div key={s.id} className={`bg-white p-5 rounded-2xl shadow-sm border-2 cursor-pointer hover:border-blue-400 transition group relative ${isExportMode && selectedSettlements.includes(s.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`} onClick={() => isExportMode ? toggleSettlementSelection(s.id) : setViewingSettlement(s)}>
-                                        {isExportMode && (<div className={`absolute top-4 left-4 w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedSettlements.includes(s.id) ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300'}`}>{selectedSettlements.includes(s.id) && <Icons.Check />}</div>)}
-                                        <div className={`flex justify-between items-start mb-3 ${isExportMode ? 'ml-8' : ''}`}>
-                                            <div>
-                                                <div className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded inline-block mb-2">#{settlements.length - index} • {s.settledDate} {s.isAutoSettle && <span className="ml-1 text-purple-500">({t.auto_settle})</span>}</div>
-                                                {isPersonalBook && s.balance !== undefined ? (
-                                                    <div className={`text-2xl font-black ${s.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>{s.balance >= 0 ? '+' : ''}{currentCurrency.symbol}{Math.round(s.balance).toLocaleString()}</div>
-                                                ) : (
-                                                    <div className="text-2xl font-black text-gray-800">{currentCurrency.symbol}{s.totalAmount?.toLocaleString()}</div>
-                                                )}
-                                                <div className="text-sm font-bold mt-1 text-gray-500">{s.finalResult || (isPersonalBook ? `${t.expense}: ${currentCurrency.symbol}${Math.round(s.totalExpense || 0).toLocaleString()} / ${t.income}: ${currentCurrency.symbol}${Math.round(s.totalIncome || 0).toLocaleString()}` : t.settled)}</div>
-                                            </div>
-                                        </div>
-                                        {!isExportMode && <div className="absolute right-4 bottom-4 text-xs text-blue-400 font-bold opacity-0 group-hover:opacity-100 transition">Detail →</div>}
-                                    </div>
-                                )))
-                            )}
-                        </div>
-                    </div>)}
-                </div>
-            );
-        }
-        ReactDOM.render(<CoupleExpenseApp />, document.getElementById('root'));
-    </script>
-</body>
-</html>
+                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.split_type}</label><div className="grid grid-cols-2 gap-3"><button onClick={() => handleSplitTypeChange('equal')} className={`p-3 rounded-2xl border-2 font-bold text-base t
