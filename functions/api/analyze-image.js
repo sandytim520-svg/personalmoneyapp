@@ -79,7 +79,7 @@ export async function onRequest(context) {
         console.log('Calling Gemini 1.5 Flash API...');
 
         // Call Gemini 1.5 Flash API
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${env.GEMINI_API_KEY}`;
         
         const geminiResponse = await fetch(apiUrl, {
             method: 'POST',
