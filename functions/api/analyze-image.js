@@ -1,5 +1,5 @@
 // Cloudflare Pages Function for analyzing bank transaction images
-// Using Google Gemini 2.0 Flash-Lite (FREE - Higher Quota)
+// Using OpenRouter Free API (Multiple free models available)
 // File: functions/api/analyze-image.js
 
 export async function onRequest(context) {
@@ -18,8 +18,8 @@ export async function onRequest(context) {
     if (request.method === 'GET') {
         return new Response(JSON.stringify({ 
             status: 'ok', 
-            message: 'Gemini 2.0 Flash-Lite API ready',
-            hasApiKey: !!env.GEMINI_API_KEY
+            message: 'OpenRouter API ready',
+            hasApiKey: !!env.OPENROUTER_API_KEY
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -33,9 +33,9 @@ export async function onRequest(context) {
     }
 
     try {
-        if (!env.GEMINI_API_KEY) {
+        if (!env.OPENROUTER_API_KEY) {
             return new Response(JSON.stringify({ 
-                error: 'GEMINI_API_KEY not configured',
+                error: 'OPENROUTER_API_KEY not configured',
                 success: false,
                 transactions: []
             }), {
@@ -43,11 +43,6 @@ export async function onRequest(context) {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
-
-        // Debug: Log API key info (first 10 chars only for security)
-        const keyPreview = env.GEMINI_API_KEY.substring(0, 10) + '...';
-        console.log('Using API Key:', keyPreview);
-        console.log('API Key length:', env.GEMINI_API_KEY.length);
 
         const { image } = await request.json();
         
@@ -58,42 +53,32 @@ export async function onRequest(context) {
             });
         }
 
-        // Extract base64 data and mime type
-        let mimeType = 'image/png';
-        let base64Data = '';
-        
-        if (image.startsWith('data:')) {
-            const commaIndex = image.indexOf(',');
-            if (commaIndex !== -1) {
-                const header = image.substring(0, commaIndex);
-                base64Data = image.substring(commaIndex + 1);
-                const mimeMatch = header.match(/data:([^;]+)/);
-                if (mimeMatch) mimeType = mimeMatch[1];
-            }
-        } else {
-            base64Data = image;
+        // Ensure image has proper data URL format
+        let imageUrl = image;
+        if (!image.startsWith('data:')) {
+            imageUrl = `data:image/png;base64,${image}`;
         }
 
-        if (!base64Data) {
-            return new Response(JSON.stringify({ error: 'No base64 data found' }), {
-                status: 400,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
-        }
+        console.log('Calling OpenRouter API...');
 
-        console.log('Calling Gemini 2.0 Flash-Lite API...');
-
-        // Call Gemini 2.0 Flash-Lite API (higher quota limits)
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${env.GEMINI_API_KEY}`;
-        
-        const geminiResponse = await fetch(apiUrl, {
+        // Call OpenRouter API with free model
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://personalmoneyapp.pages.dev',
+                'X-Title': 'Personal Money App'
+            },
             body: JSON.stringify({
-                contents: [{
-                    parts: [
-                        {
-                            text: `Analyze this bank app screenshot and extract ALL visible transactions.
+                model: 'google/gemini-2.0-flash-exp:free',
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: `Analyze this bank app screenshot and extract ALL visible transactions.
 
 For each transaction, extract:
 - date: Convert "Sun 02 Nov 2025" to "2025-11-02"
@@ -107,35 +92,29 @@ RULES:
 - Keep exact decimal amounts
 - Each transaction once only
 
-Return ONLY a JSON array:
-[{"date":"2025-11-02","description":"KFC (Sebastopol)","category":"Eating out","amount":24.35,"type":"expense"}]
-
-If no transactions visible, return: []`
-                        },
-                        {
-                            inlineData: {
-                                mimeType: mimeType,
-                                data: base64Data
+Return ONLY a JSON array, no other text:
+[{"date":"2025-11-02","description":"KFC","category":"Eating out","amount":24.35,"type":"expense"}]`
+                            },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: imageUrl
+                                }
                             }
-                        }
-                    ]
-                }],
-                generationConfig: {
-                    temperature: 0.1,
-                    maxOutputTokens: 4096
-                }
+                        ]
+                    }
+                ],
+                max_tokens: 4096,
+                temperature: 0.1
             })
         });
 
-        if (!geminiResponse.ok) {
-            const errorText = await geminiResponse.text();
-            console.error('Gemini API error:', geminiResponse.status, errorText);
-            console.error('API Key used (first 10):', env.GEMINI_API_KEY.substring(0, 10));
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('OpenRouter API error:', response.status, errorText);
             return new Response(JSON.stringify({ 
-                error: `Gemini API error: ${geminiResponse.status}`,
+                error: `OpenRouter API error: ${response.status}`,
                 details: errorText,
-                keyPreview: env.GEMINI_API_KEY.substring(0, 10) + '...',
-                keyLength: env.GEMINI_API_KEY.length,
                 success: false,
                 transactions: []
             }), {
@@ -144,13 +123,13 @@ If no transactions visible, return: []`
             });
         }
 
-        const geminiData = await geminiResponse.json();
-        console.log('Gemini Response received');
+        const data = await response.json();
+        console.log('OpenRouter Response received');
 
         let transactions = [];
         
-        if (geminiData.candidates && geminiData.candidates[0] && geminiData.candidates[0].content) {
-            const content = geminiData.candidates[0].content.parts[0].text;
+        if (data.choices && data.choices[0] && data.choices[0].message) {
+            const content = data.choices[0].message.content;
             console.log('AI Content:', content);
             
             try {
@@ -187,7 +166,7 @@ If no transactions visible, return: []`
             success: transactions.length > 0, 
             transactions: transactions,
             count: transactions.length,
-            source: 'gemini-2.0-flash-lite'
+            source: 'openrouter-gemini-free'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
