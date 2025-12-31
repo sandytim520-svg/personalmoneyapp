@@ -84,24 +84,39 @@ export async function onRequest(context) {
             bytes[i] = binaryString.charCodeAt(i);
         }
 
-        console.log('Calling Cloudflare Workers AI (LLaVA)...');
+        console.log('Calling Cloudflare Workers AI (Llama 3.2 Vision)...');
 
-        // Call LLaVA Vision model (no license agreement required)
-        const aiResponse = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
+        // First, agree to Llama 3.2 license (one-time)
+        try {
+            await env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
+                image: Array.from(bytes),
+                prompt: 'agree'
+            });
+        } catch (e) {
+            console.log('License agreement attempt:', e.message);
+        }
+
+        // Now call the actual analysis
+        const aiResponse = await env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
             image: Array.from(bytes),
-            prompt: `Analyze this bank app screenshot. Extract all visible transactions.
+            prompt: `Analyze this bank transaction screenshot. Extract ALL transactions you see.
 
-For each transaction provide:
-- date: format as YYYY-MM-DD (e.g., "Sun 02 Nov 2025" becomes "2025-11-02")
-- name: merchant name
-- cat: category shown below merchant
-- amt: amount as number (e.g., 24.35)
-- exp: true if expense (has minus sign), false if income
+For each transaction, give me:
+- date: Convert "Sun 02 Nov 2025" to "2025-11-02", "Fri 31 Oct 2025" to "2025-10-31"
+- name: The merchant name exactly as shown
+- cat: The category text below the merchant name
+- amt: The dollar amount as a number (24.35 from "-$24.35")
+- exp: true if expense (minus sign), false if income
 
-Return ONLY a JSON array:
-[{"date":"2025-11-02","name":"KFC","cat":"Food","amt":24.35,"exp":true}]
+Rules:
+1. Skip transactions where amount is hidden by buttons
+2. Only extract clearly visible transactions
+3. Keep exact decimal amounts
 
-Skip transactions with hidden amounts. List all visible transactions:`
+Return ONLY a JSON array like this, nothing else:
+[{"date":"2025-11-02","name":"KFC (Sebastopol)","cat":"Eating out","amt":24.35,"exp":true}]
+
+Now extract all transactions:`
         });
 
         console.log('AI Response:', JSON.stringify(aiResponse));
@@ -146,7 +161,7 @@ Skip transactions with hidden amounts. List all visible transactions:`
             success: transactions.length > 0, 
             transactions: transactions,
             count: transactions.length,
-            source: 'cloudflare-llava-1.5'
+            source: 'cloudflare-llama-3.2-vision'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
