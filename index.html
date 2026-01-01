@@ -32,6 +32,11 @@
         .swipe-content { transition: transform 0.3s ease; }
         .swipe-content.swiping { transition: none; }
         .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #EF4444; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 1rem; }
+        /* Swipe to clear styles */
+        .swipe-clear-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #10B981; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 0.75rem; }
+        .swipe-unclear-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #F59E0B; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 0.75rem; }
+        .cleared-item { opacity: 0.7; background: linear-gradient(90deg, #D1FAE5 0%, #ECFDF5 100%) !important; }
+        .cleared-badge { background: #10B981; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
         /* Dark Mode Styles */
         .dark { background-color: #000000 !important; color: #F9FAFB !important; }
         .dark .bg-white { background-color: #1a1a1a !important; }
@@ -162,7 +167,9 @@
                 confirm_delete_category: "確定要刪除此類別嗎？", category_in_use: "此類別正在使用中，無法刪除",
                 member_settings: "成員設定", import_success: "成功匯入", records: "筆交易記錄",
                 no_valid_records: "沒有有效的交易記錄可匯入", dark_mode: "深色模式", light_mode: "淺色模式",
-                expense_details: "支出明細", income_details: "收入明細"
+                expense_details: "支出明細", income_details: "收入明細",
+                upload_icon: "上傳圖示", custom_icon: "自訂圖示", filter_category: "類別", filter_type: "類型",
+                cleared: "已結清", mark_cleared: "結清", undo_cleared: "取消結清"
             },
             en: {
                 app_title: "Split Bill", book_list: "Ledgers", default_book: "Default Ledger", ledger: "Ledger",
@@ -219,7 +226,9 @@
                 confirm_delete_category: "Delete this category?", category_in_use: "Category in use, cannot delete",
                 member_settings: "Member Settings", import_success: "Successfully imported", records: "transaction records",
                 no_valid_records: "No valid records to import", dark_mode: "Dark Mode", light_mode: "Light Mode",
-                expense_details: "Expense Details", income_details: "Income Details"
+                expense_details: "Expense Details", income_details: "Income Details",
+                upload_icon: "Upload Icon", custom_icon: "Custom Icon", filter_category: "Category", filter_type: "Type",
+                cleared: "Cleared", mark_cleared: "Clear", undo_cleared: "Undo Clear"
             }
         };
 
@@ -312,6 +321,54 @@
             );
         };
 
+        // Swipe to Clear/Unclear Component for debt details
+        const SwipeToClear = ({ children, onSwipe, isCleared, clearText = '結清', unclearText = '取消' }) => {
+            const [startX, setStartX] = useState(0);
+            const [currentX, setCurrentX] = useState(0);
+            const [isSwiping, setIsSwiping] = useState(false);
+            const swipeThreshold = 80;
+
+            const handleTouchStart = (e) => {
+                setStartX(e.touches[0].clientX);
+                setIsSwiping(true);
+            };
+
+            const handleTouchMove = (e) => {
+                if (!isSwiping) return;
+                const diff = startX - e.touches[0].clientX;
+                if (diff > 0) {
+                    setCurrentX(Math.min(diff, 100));
+                } else {
+                    setCurrentX(0);
+                }
+            };
+
+            const handleTouchEnd = () => {
+                setIsSwiping(false);
+                if (currentX > swipeThreshold) {
+                    onSwipe();
+                }
+                setCurrentX(0);
+            };
+
+            return (
+                <div className="swipe-container rounded-xl overflow-hidden" style={{ position: 'relative' }}>
+                    <div className={isCleared ? "swipe-unclear-bg" : "swipe-clear-bg"}>
+                        <span className="text-xs font-bold">{isCleared ? unclearText : clearText}</span>
+                    </div>
+                    <div 
+                        className={`swipe-content ${isSwiping ? 'swiping' : ''}`}
+                        style={{ transform: `translateX(-${currentX}px)` }}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                        {children}
+                    </div>
+                </div>
+            );
+        };
+
         const Icons = {
             Menu: () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>,
             Plus: () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>,
@@ -342,6 +399,7 @@
             Eye: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>,
             Pause: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
             Play: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            Upload: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>,
         };
 
         const fetchExchangeRate = async (currencyCode) => {
@@ -429,6 +487,10 @@
             const [newCategoryName, setNewCategoryName] = useState('');
             const [newCategoryNameEn, setNewCategoryNameEn] = useState('');
             const [newCategoryIcon, setNewCategoryIcon] = useState('📝');
+            const [customIconUrl, setCustomIconUrl] = useState(''); // 自訂圖示URL
+            const [filterCategory, setFilterCategory] = useState(''); // 個人帳本類別篩選
+            const [filterType, setFilterType] = useState(''); // 個人帳本類型篩選
+            const [clearedTransactions, setClearedTransactions] = useState({}); // 結清狀態 { txId: { clearedAt, clearedBy } }
             // Dark Mode State
             const [darkMode, setDarkMode] = useState(() => {
                 const saved = localStorage.getItem('darkMode');
@@ -492,6 +554,17 @@
                 return formatted;
             };
 
+            // Helper function to render category icon (supports emoji and custom image)
+            const renderCategoryIcon = (icon, size = 'text-2xl') => {
+                if (!icon) return <span className={size}>📝</span>;
+                // Check if icon is a data URL (custom uploaded image)
+                if (icon.startsWith('data:image')) {
+                    const imgSize = size === 'text-2xl' ? 'w-6 h-6' : size === 'text-xl' ? 'w-5 h-5' : 'w-4 h-4';
+                    return <img src={icon} alt="icon" className={`${imgSize} object-contain`} />;
+                }
+                return <span className={size}>{icon}</span>;
+            };
+
             // Get expense and income transactions for detail views
             const expenseTransactions = React.useMemo(() => {
                 return transactions.filter(tx => tx.txType !== 'income');
@@ -536,6 +609,18 @@
                 });
                 return () => { metaRef.off(); membersRef.off(); deletedRef.off(); categoriesRef.off(); };
             }, []);
+
+            // 監聽結清狀態
+            useEffect(() => {
+                const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
+                const clearedRef = db.ref(clearedPath);
+                clearedRef.on('value', (snapshot) => {
+                    const val = snapshot.val();
+                    if (val) setClearedTransactions(val);
+                    else setClearedTransactions({});
+                });
+                return () => clearedRef.off();
+            }, [currentBookId]);
 
             useEffect(() => {
                 if (currentBook.currency !== 'TWD') {
@@ -615,6 +700,39 @@
             };
 
             const getFilteredResults = React.useMemo(() => {
+                // 個人帳本篩選邏輯
+                if (isPersonalBook) {
+                    const hasPersonalFilters = activeFilters.category || activeFilters.txType || (activeFilters.dateType && activeFilters.dateType !== 'none');
+                    if (!hasPersonalFilters) return [];
+                    
+                    let result = [...transactions];
+                    
+                    // 日期篩選
+                    if (activeFilters.dateType === 'range' && activeFilters.startDate && activeFilters.endDate) {
+                        result = result.filter(tx => { 
+                            const txDate = new Date(tx.date); 
+                            const start = new Date(activeFilters.startDate); 
+                            const end = new Date(activeFilters.endDate); 
+                            return txDate >= start && txDate <= end; 
+                        });
+                    } else if (activeFilters.dateType === 'single' && activeFilters.singleDate) {
+                        result = result.filter(tx => tx.date === activeFilters.singleDate);
+                    }
+                    
+                    // 類別篩選
+                    if (activeFilters.category) {
+                        result = result.filter(tx => tx.category === activeFilters.category);
+                    }
+                    
+                    // 類型篩選 (收入/支出)
+                    if (activeFilters.txType) {
+                        result = result.filter(tx => tx.txType === activeFilters.txType);
+                    }
+                    
+                    return result;
+                }
+                
+                // 團體帳本篩選邏輯 (原有)
                 if (!activeFilters.payer && !activeFilters.payee) return [];
                 let result = [...transactions];
                 if (activeFilters.dateType === 'range' && activeFilters.startDate && activeFilters.endDate) {
@@ -625,9 +743,11 @@
                 if (activeFilters.payer) result = result.filter(tx => tx.payer === activeFilters.payer);
                 if (activeFilters.payee) result = result.filter(tx => { const payeeAmount = getMemberAmountInTx(tx, activeFilters.payee); return payeeAmount > 0; });
                 return result.map(tx => { const payeeAmount = activeFilters.payee ? getMemberAmountInTx(tx, activeFilters.payee) : tx.amount; return { ...tx, paidForAmount: payeeAmount, payee: activeFilters.payee || '(全部)' }; });
-            }, [transactions, activeFilters]);
+            }, [transactions, activeFilters, isPersonalBook]);
 
-            const hasActiveFilters = activeFilters.payer || activeFilters.payee || (activeFilters.dateType && activeFilters.dateType !== 'none');
+            const hasActiveFilters = isPersonalBook 
+                ? (activeFilters.category || activeFilters.txType || (activeFilters.dateType && activeFilters.dateType !== 'none'))
+                : (activeFilters.payer || activeFilters.payee || (activeFilters.dateType && activeFilters.dateType !== 'none'));
 
             const toggleLang = () => setLang(l => l === 'zh' ? 'en' : 'zh');
             const handleAddGlobalMember = () => { if (!newMemberName.trim()) return; db.ref('settings/globalMembers/' + newMemberName.trim()).set(newMemberAvatar); setNewMemberName(''); };
@@ -907,8 +1027,100 @@
             const handleCustomItemNameChange = (member, value) => { setFormData({ ...formData, customItemNames: { ...formData.customItemNames, [member]: value } }); };
             const handleCustomAmountChange = (member, value) => { setFormData({ ...formData, customAmounts: { ...formData.customAmounts, [member]: value } }); };
             const calculateCustomTotal = () => Object.values(formData.customAmounts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-            const applyFilters = () => { setActiveFilters({ dateType: filterDateType, startDate: filterStartDate, endDate: filterEndDate, singleDate: filterSingleDate, payer: filterPayer, payee: filterPayee }); setIsFilterOpen(false); };
-            const clearFilters = () => { setFilterDateType('none'); setFilterStartDate(''); setFilterEndDate(''); setFilterSingleDate(''); setFilterPayer(''); setFilterPayee(''); setActiveFilters({}); setIsFilterOpen(false); };
+            
+            // 個人帳本篩選
+            const applyFilters = () => { 
+                if (isPersonalBook) {
+                    setActiveFilters({ 
+                        dateType: filterDateType, 
+                        startDate: filterStartDate, 
+                        endDate: filterEndDate, 
+                        singleDate: filterSingleDate, 
+                        category: filterCategory,
+                        txType: filterType
+                    }); 
+                } else {
+                    setActiveFilters({ 
+                        dateType: filterDateType, 
+                        startDate: filterStartDate, 
+                        endDate: filterEndDate, 
+                        singleDate: filterSingleDate, 
+                        payer: filterPayer, 
+                        payee: filterPayee 
+                    }); 
+                }
+                setIsFilterOpen(false); 
+            };
+            const clearFilters = () => { 
+                setFilterDateType('none'); 
+                setFilterStartDate(''); 
+                setFilterEndDate(''); 
+                setFilterSingleDate(''); 
+                setFilterPayer(''); 
+                setFilterPayee(''); 
+                setFilterCategory('');
+                setFilterType('');
+                setActiveFilters({}); 
+                setIsFilterOpen(false); 
+            };
+
+            // 結清/取消結清交易
+            const toggleClearTransaction = (txId, me, other) => {
+                const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
+                const clearKey = `${txId}_${me}_${other}`;
+                const reverseKey = `${txId}_${other}_${me}`;
+                
+                if (clearedTransactions[clearKey] || clearedTransactions[reverseKey]) {
+                    // 取消結清
+                    db.ref(clearedPath + '/' + clearKey).remove();
+                    db.ref(clearedPath + '/' + reverseKey).remove();
+                } else {
+                    // 結清
+                    const clearData = {
+                        clearedAt: firebase.database.ServerValue.TIMESTAMP,
+                        clearedBy: me,
+                        parties: [me, other]
+                    };
+                    db.ref(clearedPath + '/' + clearKey).set(clearData);
+                    db.ref(clearedPath + '/' + reverseKey).set(clearData);
+                }
+            };
+
+            const isTransactionCleared = (txId, me, other) => {
+                const clearKey = `${txId}_${me}_${other}`;
+                const reverseKey = `${txId}_${other}_${me}`;
+                return !!(clearedTransactions[clearKey] || clearedTransactions[reverseKey]);
+            };
+
+            // 上傳自訂圖示
+            const handleIconUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // 檢查檔案大小 (最大 100KB)
+                if (file.size > 100 * 1024) {
+                    alert('圖片檔案過大，請選擇小於 100KB 的圖片');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // 縮小圖片到 64x64
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 64;
+                        canvas.height = 64;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, 64, 64);
+                        const dataUrl = canvas.toDataURL('image/png', 0.8);
+                        setCustomIconUrl(dataUrl);
+                        setNewCategoryIcon('custom');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
 
             const totalSpent = transactions.reduce((sum, tx) => sum + tx.amount, 0);
 
@@ -1398,6 +1610,7 @@
                     
                     if (Math.abs(amountChange) > 0.01) {
                         items.push({
+                            id: tx.id, // 加入交易 ID 以追蹤結清狀態
                             date: tx.date,
                             description: tx.description,
                             payer: tx.payer,
@@ -1654,14 +1867,14 @@
                                             return (
                                                 <div key={cat.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-2xl">{cat.icon}</span>
+                                                        <div className="w-8 h-8 flex items-center justify-center">{renderCategoryIcon(cat.icon)}</div>
                                                         <div>
                                                             <div className="font-bold text-gray-800">{lang === 'zh' ? cat.name_zh : cat.name_en}</div>
                                                             <div className="text-xs text-gray-400">{isDefault && !isCustom ? t.default_category : cat.id}</div>
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-1 items-center">
-                                                        <button onClick={() => { setEditingCategory(cat); setNewCategoryName(cat.name_zh); setNewCategoryNameEn(cat.name_en); setNewCategoryIcon(cat.icon); setIsCategoryEditOpen(true); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Icons.Edit /></button>
+                                                        <button onClick={() => { setEditingCategory(cat); setNewCategoryName(cat.name_zh); setNewCategoryNameEn(cat.name_en); setNewCategoryIcon(cat.icon); setCustomIconUrl(cat.icon.startsWith('data:image') ? cat.icon : ''); setIsCategoryEditOpen(true); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Icons.Edit /></button>
                                                         {isCustom && !isDefault && (
                                                             <button onClick={() => { const isInUse = transactions.some(tx => tx.category === cat.id); if (isInUse) { alert(t.category_in_use); return; } if (confirm(t.confirm_delete_category)) db.ref('settings/customCategories/' + cat.id).remove(); }} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Icons.Trash /></button>
                                                         )}
@@ -1875,16 +2088,63 @@
                     </div>}
 
                     {/* Category Edit Modal */}
-                    {isCategoryEditOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+                    {isCategoryEditOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
                         <h3 className="text-xl font-black text-gray-800 mb-4">{editingCategory ? t.edit_category : t.add_category}</h3>
                         <div className="space-y-4">
                             <div><label className="text-xs font-bold text-gray-400 ml-1">{t.category_name_zh}</label><input type="text" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold outline-none mt-1" placeholder="餐飲" /></div>
                             <div><label className="text-xs font-bold text-gray-400 ml-1">{t.category_name_en}</label><input type="text" value={newCategoryNameEn} onChange={e => setNewCategoryNameEn(e.target.value)} className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold outline-none mt-1" placeholder="Food" /></div>
-                            <div><label className="text-xs font-bold text-gray-400 ml-1">{t.category_icon}</label><div className="flex flex-wrap gap-2 mt-2 max-h-32 overflow-y-auto">{CATEGORY_ICONS.map(icon => (<button key={icon} onClick={() => setNewCategoryIcon(icon)} className={`w-10 h-10 text-xl rounded-lg flex items-center justify-center ${newCategoryIcon === icon ? 'bg-black text-white' : 'bg-gray-100'}`}>{icon}</button>))}</div></div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 ml-1">{t.category_icon}</label>
+                                <div className="flex flex-wrap gap-2 mt-2 max-h-32 overflow-y-auto">
+                                    {CATEGORY_ICONS.map(icon => (
+                                        <button key={icon} onClick={() => { setNewCategoryIcon(icon); setCustomIconUrl(''); }} className={`w-10 h-10 text-xl rounded-lg flex items-center justify-center ${newCategoryIcon === icon && !customIconUrl ? 'bg-black text-white' : 'bg-gray-100'}`}>{icon}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            {/* 上傳自訂圖示區塊 */}
+                            <div className="border-t border-gray-200 pt-4">
+                                <label className="text-xs font-bold text-gray-400 ml-1 flex items-center gap-1">
+                                    <Icons.Upload /> {t.upload_icon}
+                                </label>
+                                <div className="mt-2 flex items-center gap-3">
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        onChange={handleIconUpload}
+                                        className="hidden"
+                                        id="icon-upload"
+                                    />
+                                    <label 
+                                        htmlFor="icon-upload" 
+                                        className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold text-center cursor-pointer hover:bg-blue-100 transition flex items-center justify-center gap-2"
+                                    >
+                                        <Icons.Upload /> {t.custom_icon}
+                                    </label>
+                                    {customIconUrl && (
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-gray-100 border-2 ${newCategoryIcon === 'custom' ? 'border-black' : 'border-transparent'}`}>
+                                            <img src={customIconUrl} alt="custom icon" className="w-8 h-8 object-contain" />
+                                        </div>
+                                    )}
+                                </div>
+                                {customIconUrl && (
+                                    <p className="text-xs text-green-600 mt-2">✓ 已選擇自訂圖示</p>
+                                )}
+                            </div>
                         </div>
                         <div className="flex gap-3 mt-6">
-                            <button onClick={() => setIsCategoryEditOpen(false)} className="flex-1 py-3 rounded-xl font-bold text-gray-500 bg-gray-100">{t.cancel}</button>
-                            <button onClick={() => { if (!newCategoryName.trim()) return alert(t.alert_input); if (editingCategory) { db.ref('settings/customCategories/' + editingCategory.id).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: newCategoryIcon }); } else { const newId = 'cat_' + Date.now(); db.ref('settings/customCategories/' + newId).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: newCategoryIcon }); } setIsCategoryEditOpen(false); }} className="flex-1 py-3 rounded-xl font-bold text-white bg-black">{t.save}</button>
+                            <button onClick={() => { setIsCategoryEditOpen(false); setCustomIconUrl(''); }} className="flex-1 py-3 rounded-xl font-bold text-gray-500 bg-gray-100">{t.cancel}</button>
+                            <button onClick={() => { 
+                                if (!newCategoryName.trim()) return alert(t.alert_input); 
+                                const iconToSave = customIconUrl || newCategoryIcon;
+                                if (editingCategory) { 
+                                    db.ref('settings/customCategories/' + editingCategory.id).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: iconToSave }); 
+                                } else { 
+                                    const newId = 'cat_' + Date.now(); 
+                                    db.ref('settings/customCategories/' + newId).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: iconToSave }); 
+                                } 
+                                setIsCategoryEditOpen(false); 
+                                setCustomIconUrl('');
+                            }} className="flex-1 py-3 rounded-xl font-bold text-white bg-black">{t.save}</button>
                         </div>
                     </div></div>}
 
@@ -2000,10 +2260,160 @@
                     </div>}
 
                     {/* Filter Modal */}
-                    {isFilterOpen && (<div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><Icons.Filter /> {t.filter}</h3><button onClick={() => setIsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button></div><div className="mb-4"><label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_date}</label><div className="grid grid-cols-3 gap-2 mb-3"><button onClick={() => setFilterDateType('none')} className={`p-2 rounded-xl font-bold text-sm ${filterDateType === 'none' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.no_filter}</button><button onClick={() => setFilterDateType('range')} className={`p-2 rounded-xl font-bold text-sm ${filterDateType === 'range' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.date_range}</button><button onClick={() => setFilterDateType('single')} className={`p-2 rounded-xl font-bold text-sm ${filterDateType === 'single' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.single_date}</button></div>{filterDateType === 'range' && (<div className="grid grid-cols-2 gap-2"><div><label className="text-xs text-gray-400 block mb-1">{t.start_date}</label><input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="w-full bg-gray-50 px-3 py-2 rounded-xl text-sm font-bold outline-none" /></div><div><label className="text-xs text-gray-400 block mb-1">{t.end_date}</label><input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="w-full bg-gray-50 px-3 py-2 rounded-xl text-sm font-bold outline-none" /></div></div>)}{filterDateType === 'single' && (<input type="date" value={filterSingleDate} onChange={e => setFilterSingleDate(e.target.value)} className="w-full bg-gray-50 px-3 py-2 rounded-xl text-sm font-bold outline-none" />)}</div><div className="mb-4"><label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_payer}</label><div className="flex flex-wrap gap-2"><button onClick={() => setFilterPayer('')} className={`px-3 py-2 rounded-xl font-bold text-sm ${filterPayer === '' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.all}</button>{bookMembers.map(m => (<button key={m} onClick={() => setFilterPayer(m)} className={`px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 ${filterPayer === m ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}><span>{globalMembers[m]}</span> {m}</button>))}</div></div>{!isPersonalBook && <div className="mb-6"><label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_payee}</label><div className="flex flex-wrap gap-2"><button onClick={() => setFilterPayee('')} className={`px-3 py-2 rounded-xl font-bold text-sm ${filterPayee === '' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.all}</button>{bookMembers.map(m => (<button key={m} onClick={() => setFilterPayee(m)} className={`px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 ${filterPayee === m ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}><span>{globalMembers[m]}</span> {m}</button>))}</div></div>}<div className="flex gap-3"><button onClick={clearFilters} className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl">{t.clear_filter}</button><button onClick={applyFilters} className="flex-1 py-3 font-bold text-white bg-black rounded-xl">{t.apply_filter}</button></div></div></div>)}
+                    {isFilterOpen && (<div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><Icons.Filter /> {t.filter}</h3>
+                            <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button>
+                        </div>
+                        
+                        {/* 日期篩選 */}
+                        <div className="mb-4">
+                            <label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_date}</label>
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                <button onClick={() => setFilterDateType('none')} className={`p-2 rounded-xl font-bold text-sm ${filterDateType === 'none' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.no_filter}</button>
+                                <button onClick={() => setFilterDateType('range')} className={`p-2 rounded-xl font-bold text-sm ${filterDateType === 'range' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.date_range}</button>
+                                <button onClick={() => setFilterDateType('single')} className={`p-2 rounded-xl font-bold text-sm ${filterDateType === 'single' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.single_date}</button>
+                            </div>
+                            {filterDateType === 'range' && (
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div><label className="text-xs text-gray-400 block mb-1">{t.start_date}</label><input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="w-full bg-gray-50 px-3 py-2 rounded-xl text-sm font-bold outline-none" /></div>
+                                    <div><label className="text-xs text-gray-400 block mb-1">{t.end_date}</label><input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="w-full bg-gray-50 px-3 py-2 rounded-xl text-sm font-bold outline-none" /></div>
+                                </div>
+                            )}
+                            {filterDateType === 'single' && (<input type="date" value={filterSingleDate} onChange={e => setFilterSingleDate(e.target.value)} className="w-full bg-gray-50 px-3 py-2 rounded-xl text-sm font-bold outline-none" />)}
+                        </div>
+
+                        {/* 個人帳本篩選 - 類型 */}
+                        {isPersonalBook && (
+                            <div className="mb-4">
+                                <label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_type}</label>
+                                <div className="flex flex-wrap gap-2">
+                                    <button onClick={() => setFilterType('')} className={`px-3 py-2 rounded-xl font-bold text-sm ${filterType === '' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.all}</button>
+                                    <button onClick={() => setFilterType('expense')} className={`px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 ${filterType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                        <Icons.TrendDown /> {t.expense}
+                                    </button>
+                                    <button onClick={() => setFilterType('income')} className={`px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 ${filterType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                        <Icons.TrendUp /> {t.income}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 個人帳本篩選 - 類別 */}
+                        {isPersonalBook && (
+                            <div className="mb-4">
+                                <label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_category}</label>
+                                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                                    <button onClick={() => setFilterCategory('')} className={`px-3 py-2 rounded-xl font-bold text-sm ${filterCategory === '' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.all}</button>
+                                    {allCategories.map(cat => (
+                                        <button key={cat.id} onClick={() => setFilterCategory(cat.id)} className={`px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 ${filterCategory === cat.id ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                            {renderCategoryIcon(cat.icon, 'text-base')} {lang === 'zh' ? cat.name_zh : cat.name_en}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 團體帳本篩選 - 付款人 */}
+                        {!isPersonalBook && (
+                            <div className="mb-4">
+                                <label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_payer}</label>
+                                <div className="flex flex-wrap gap-2">
+                                    <button onClick={() => setFilterPayer('')} className={`px-3 py-2 rounded-xl font-bold text-sm ${filterPayer === '' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.all}</button>
+                                    {bookMembers.map(m => (<button key={m} onClick={() => setFilterPayer(m)} className={`px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 ${filterPayer === m ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}><span>{globalMembers[m]}</span> {m}</button>))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 團體帳本篩選 - 被付款人 */}
+                        {!isPersonalBook && (
+                            <div className="mb-6">
+                                <label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_payee}</label>
+                                <div className="flex flex-wrap gap-2">
+                                    <button onClick={() => setFilterPayee('')} className={`px-3 py-2 rounded-xl font-bold text-sm ${filterPayee === '' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>{t.all}</button>
+                                    {bookMembers.map(m => (<button key={m} onClick={() => setFilterPayee(m)} className={`px-3 py-2 rounded-xl font-bold text-sm flex items-center gap-1 ${filterPayee === m ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}><span>{globalMembers[m]}</span> {m}</button>))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button onClick={clearFilters} className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl">{t.clear_filter}</button>
+                            <button onClick={applyFilters} className="flex-1 py-3 font-bold text-white bg-black rounded-xl">{t.apply_filter}</button>
+                        </div>
+                    </div></div>)}
 
                     {/* Filter Results */}
-                    {hasActiveFilters && getFilteredResults.length > 0 && !viewingFilteredTx && (<div className="fixed inset-0 z-50 bg-gray-100 flex flex-col modal-enter"><div className="bg-white px-6 py-4 shadow-sm flex items-center justify-between sticky top-0 z-10"><div className="flex items-center gap-2"><button onClick={clearFilters} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h2 className="text-xl font-black text-gray-800">{t.filter_results}</h2><span className="bg-blue-600 text-white px-2 py-0.5 rounded-full text-sm font-bold">{getFilteredResults.length}</span></div><button onClick={clearFilters} className="p-2 bg-gray-100 rounded-full text-gray-600 font-bold text-sm">✕</button></div><div className="filter-header-bar bg-blue-50 px-6 py-3 flex flex-wrap gap-2 text-sm">{activeFilters.payer && (<span className="bg-white px-3 py-1 rounded-full font-bold text-gray-700">{t.payer}: {globalMembers[activeFilters.payer]} {activeFilters.payer}</span>)}{activeFilters.payee && (<span className="bg-green-600 text-white px-3 py-1 rounded-full font-bold">{t.filter_payee}: {globalMembers[activeFilters.payee]} {activeFilters.payee}</span>)}{activeFilters.dateType === 'single' && activeFilters.singleDate && (<span className="bg-white px-3 py-1 rounded-full font-bold text-gray-700">{t.date}: {activeFilters.singleDate}</span>)}{activeFilters.dateType === 'range' && activeFilters.startDate && activeFilters.endDate && (<span className="bg-white px-3 py-1 rounded-full font-bold text-gray-700">{activeFilters.startDate} ~ {activeFilters.endDate}</span>)}</div><div className="flex-1 overflow-y-auto p-4 space-y-3">{getFilteredResults.map((item, idx) => (<div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200"><div className="flex justify-between items-start mb-3"><div><div className="text-xs font-bold text-gray-400 mb-1">{item.date}</div><div className="font-bold text-gray-800 text-lg">{formatDescription(item.description)}</div></div><div className="text-right">{activeFilters.payee && (<div className="text-sm text-orange-600 font-bold mb-1">{t.paid_for}: {currentCurrency.symbol}{Math.round(item.paidForAmount).toLocaleString()}</div>)}<div className="text-xl font-black text-gray-800">{currentCurrency.symbol}{item.amount.toLocaleString()}</div></div></div><div className="flex gap-3 mb-3">{activeFilters.payer && (<div className="bg-gray-100 px-3 py-2 rounded-xl"><div className="text-xs text-gray-500 mb-1">{t.payer}:</div><div className="flex items-center gap-1"><span className="text-xl">{globalMembers[item.payer]}</span><span className="font-bold text-gray-800">{item.payer}</span></div></div>)}{activeFilters.payee && (<div className="bg-green-600 px-3 py-2 rounded-xl"><div className="text-xs text-green-100 mb-1">{t.filter_payee}:</div><div className="flex items-center gap-1"><span className="text-xl">{globalMembers[activeFilters.payee]}</span><span className="font-bold text-white">{activeFilters.payee}</span></div></div>)}</div><div className="flex justify-between items-center"><span className="text-sm text-gray-600 font-bold">{t.total_amount}: {currentCurrency.symbol}{item.amount.toLocaleString()}</span><button onClick={() => setViewingFilteredTx(item)} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">{t.view_detail} <Icons.ChevronRight /></button></div></div>))}</div></div>)}
+                    {hasActiveFilters && getFilteredResults.length > 0 && !viewingFilteredTx && (<div className="fixed inset-0 z-50 bg-gray-100 flex flex-col modal-enter">
+                        <div className="bg-white px-6 py-4 shadow-sm flex items-center justify-between sticky top-0 z-10">
+                            <div className="flex items-center gap-2">
+                                <button onClick={clearFilters} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button>
+                                <h2 className="text-xl font-black text-gray-800">{t.filter_results}</h2>
+                                <span className="bg-blue-600 text-white px-2 py-0.5 rounded-full text-sm font-bold">{getFilteredResults.length}</span>
+                            </div>
+                            <button onClick={clearFilters} className="p-2 bg-gray-100 rounded-full text-gray-600 font-bold text-sm">✕</button>
+                        </div>
+                        <div className="filter-header-bar bg-blue-50 px-6 py-3 flex flex-wrap gap-2 text-sm">
+                            {/* 個人帳本篩選標籤 */}
+                            {isPersonalBook && activeFilters.txType && (
+                                <span className={`px-3 py-1 rounded-full font-bold ${activeFilters.txType === 'expense' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
+                                    {activeFilters.txType === 'expense' ? t.expense : t.income}
+                                </span>
+                            )}
+                            {isPersonalBook && activeFilters.category && (
+                                <span className="bg-purple-500 text-white px-3 py-1 rounded-full font-bold flex items-center gap-1">
+                                    {renderCategoryIcon(allCategories.find(c => c.id === activeFilters.category)?.icon, 'text-sm')}
+                                    {lang === 'zh' ? allCategories.find(c => c.id === activeFilters.category)?.name_zh : allCategories.find(c => c.id === activeFilters.category)?.name_en}
+                                </span>
+                            )}
+                            {/* 團體帳本篩選標籤 */}
+                            {!isPersonalBook && activeFilters.payer && (<span className="bg-white px-3 py-1 rounded-full font-bold text-gray-700">{t.payer}: {globalMembers[activeFilters.payer]} {activeFilters.payer}</span>)}
+                            {!isPersonalBook && activeFilters.payee && (<span className="bg-green-600 text-white px-3 py-1 rounded-full font-bold">{t.filter_payee}: {globalMembers[activeFilters.payee]} {activeFilters.payee}</span>)}
+                            {/* 日期篩選標籤 */}
+                            {activeFilters.dateType === 'single' && activeFilters.singleDate && (<span className="bg-white px-3 py-1 rounded-full font-bold text-gray-700">{t.date}: {activeFilters.singleDate}</span>)}
+                            {activeFilters.dateType === 'range' && activeFilters.startDate && activeFilters.endDate && (<span className="bg-white px-3 py-1 rounded-full font-bold text-gray-700">{activeFilters.startDate} ~ {activeFilters.endDate}</span>)}
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {getFilteredResults.map((item, idx) => {
+                                const categoryInfo = allCategories.find(c => c.id === item.category) || allCategories[allCategories.length - 1];
+                                return (
+                                    <div key={idx} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-start gap-3">
+                                                {isPersonalBook && (
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100">
+                                                        {renderCategoryIcon(categoryInfo.icon)}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <div className="text-xs font-bold text-gray-400 mb-1">{item.date}</div>
+                                                    <div className="font-bold text-gray-800 text-lg">{formatDescription(item.description)}</div>
+                                                    {isPersonalBook && <div className="text-xs text-gray-400 mt-1">{lang === 'zh' ? categoryInfo.name_zh : categoryInfo.name_en}</div>}
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                {!isPersonalBook && activeFilters.payee && (<div className="text-sm text-orange-600 font-bold mb-1">{t.paid_for}: {currentCurrency.symbol}{Math.round(item.paidForAmount).toLocaleString()}</div>)}
+                                                <div className={`text-xl font-black ${isPersonalBook ? (item.txType === 'income' ? 'text-green-600' : 'text-red-600') : 'text-gray-800'}`}>
+                                                    {isPersonalBook && (item.txType === 'income' ? '+' : '-')}{currentCurrency.symbol}{item.amount.toLocaleString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {!isPersonalBook && (
+                                            <div className="flex gap-3 mb-3">
+                                                {activeFilters.payer && (<div className="bg-gray-100 px-3 py-2 rounded-xl"><div className="text-xs text-gray-500 mb-1">{t.payer}:</div><div className="flex items-center gap-1"><span className="text-xl">{globalMembers[item.payer]}</span><span className="font-bold text-gray-800">{item.payer}</span></div></div>)}
+                                                {activeFilters.payee && (<div className="bg-green-600 px-3 py-2 rounded-xl"><div className="text-xs text-green-100 mb-1">{t.filter_payee}:</div><div className="flex items-center gap-1"><span className="text-xl">{globalMembers[activeFilters.payee]}</span><span className="font-bold text-white">{activeFilters.payee}</span></div></div>)}
+                                            </div>
+                                        )}
+                                        {!isPersonalBook && (
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-sm text-gray-600 font-bold">{t.total_amount}: {currentCurrency.symbol}{item.amount.toLocaleString()}</span>
+                                                <button onClick={() => setViewingFilteredTx(item)} className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700">{t.view_detail} <Icons.ChevronRight /></button>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>)}
 
                     {/* Transaction Detail Modal */}
                     {viewingFilteredTx && (<div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800">{t.tx_detail}</h3><button onClick={() => setViewingFilteredTx(null)} className="p-2 bg-gray-100 rounded-full">✕</button></div><div className="space-y-4"><div className="bg-gray-50 p-4 rounded-2xl"><div className="grid grid-cols-2 gap-4"><div><div className="text-xs font-bold text-gray-400 mb-1">{t.payer}</div><div className="font-bold text-gray-800 flex items-center gap-2"><span className="text-2xl">{globalMembers[viewingFilteredTx.payer]}</span>{viewingFilteredTx.payer}</div></div><div><div className="text-xs font-bold text-gray-400 mb-1">{t.split_type}</div><div className="font-bold text-gray-800">{viewingFilteredTx.splitType === 'custom' ? t.custom_split : t.equal_split}</div></div></div></div><div className="bg-gray-50 p-4 rounded-2xl"><div className="text-xs font-bold text-gray-400 mb-2">{t.split_to}</div><div className="space-y-2">{viewingFilteredTx.involved.map(m => { const memberAmount = getMemberAmountInTx(viewingFilteredTx, m); const itemName = viewingFilteredTx.customItemNames && viewingFilteredTx.customItemNames[m]; return (<div key={m} className="flex justify-between items-center bg-white p-2 rounded-xl"><div className="flex items-center gap-2"><span>{globalMembers[m]}</span><div><span className="font-bold">{m}</span>{itemName && <div className="text-xs text-purple-600">{itemName}</div>}</div></div><span className="font-black text-gray-800">{currentCurrency.symbol}{Math.round(memberAmount).toLocaleString()}</span></div>); })}</div></div><div className="grid grid-cols-2 gap-4"><div className="bg-gray-50 p-4 rounded-2xl"><div className="text-xs font-bold text-gray-400 mb-1">{t.amount}</div><div className="text-2xl font-black text-gray-800">{currentCurrency.symbol}{viewingFilteredTx.amount.toLocaleString()}</div></div><div className="bg-gray-50 p-4 rounded-2xl"><div className="text-xs font-bold text-gray-400 mb-1">{t.date}</div><div className="font-bold text-gray-800">{viewingFilteredTx.date}</div></div></div><div className="bg-gray-50 p-4 rounded-2xl"><div className="text-xs font-bold text-gray-400 mb-1">{t.item}</div><div className="font-bold text-gray-800 text-lg">{formatDescription(viewingFilteredTx.description)}</div></div></div></div></div>)}
@@ -2114,7 +2524,7 @@
                                         <SwipeToDelete onDelete={() => handleDelete(t_item.id)}>
                                             <div className="bg-white p-4 rounded-2xl shadow-sm border border-transparent hover:border-gray-200 transition-all">
                                                 <div className="flex items-start gap-3 mb-2">
-                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl bg-gray-100">{categoryInfo.icon}</div>
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl bg-gray-100">{renderCategoryIcon(categoryInfo.icon)}</div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-start justify-between gap-3">
                                                             <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}</p>
@@ -2188,7 +2598,13 @@
                     <button onClick={() => openModal(null)} className="fab-btn fixed bottom-6 right-6 w-16 h-16 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center btn-press z-30"><Icons.Plus /></button>
 
                     {/* Member Detail Modal */}
-                    {viewingMemberDebt && !isPersonalBook && (<div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><span>{globalMembers[viewingMemberDebt]}</span> {viewingMemberDebt}</h3><button onClick={() => { setViewingMemberDebt(null); setExpandedDebtDetail(null); }} className="p-2 bg-gray-100 rounded-full">✕</button></div><div className="space-y-4">{(() => { const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>
+                    {viewingMemberDebt && !isPersonalBook && (<div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><span>{globalMembers[viewingMemberDebt]}</span> {viewingMemberDebt}</h3>
+                            <button onClick={() => { setViewingMemberDebt(null); setExpandedDebtDetail(null); }} className="p-2 bg-gray-100 rounded-full">✕</button>
+                        </div>
+                        <p className="text-xs text-gray-400 mb-4 text-center">← {lang === 'zh' ? '往左滑可結清/取消結清帳款' : 'Swipe left to clear/unclear'}</p>
+                        <div className="space-y-4">{(() => { const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>
                         {toPay.length > 0 && (<div><p className="text-xs font-bold text-red-500 mb-2 uppercase">{t.payables}</p>{toPay.map((d, i) => {
                             const isExpanded = expandedDebtDetail && expandedDebtDetail.type === 'pay' && expandedDebtDetail.person === d.to;
                             const details = isExpanded ? getDetailBetweenTwo(viewingMemberDebt, d.to) : [];
@@ -2198,17 +2614,31 @@
                                     <span className="font-black text-white">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
                                 </div>
                                 {isExpanded && details.length > 0 && (
-                                    <div className="bg-red-50 rounded-xl p-3 mt-1 space-y-2">
-                                        {details.map((item, j) => (
-                                            <div key={j} className="flex justify-between items-center text-sm">
-                                                <div className="flex-1">
-                                                    <span className="font-bold text-gray-700">{item.date.slice(5)}</span>
-                                                    <span className="text-gray-600 ml-1">{formatDescription(item.description)}</span>
-                                                    <span className="text-gray-400 text-xs ml-1">({item.payer}{t.other_paid})</span>
-                                                </div>
-                                                <span className={`font-bold ${item.isPositive ? 'text-green-600' : 'text-red-600'}`}>{item.isPositive ? '+' : '-'}{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span>
-                                            </div>
-                                        ))}
+                                    <div className="bg-red-50 rounded-xl p-3 mt-1 space-y-1">
+                                        {details.map((item, j) => {
+                                            const isCleared = isTransactionCleared(item.id, viewingMemberDebt, d.to);
+                                            return (
+                                                <SwipeToClear 
+                                                    key={j} 
+                                                    onSwipe={() => toggleClearTransaction(item.id, viewingMemberDebt, d.to)}
+                                                    isCleared={isCleared}
+                                                    clearText={t.mark_cleared}
+                                                    unclearText={t.undo_cleared}
+                                                >
+                                                    <div className={`flex justify-between items-center text-sm p-2 rounded-lg ${isCleared ? 'cleared-item' : 'bg-white'}`}>
+                                                        <div className="flex-1">
+                                                            <span className="font-bold text-gray-700">{item.date.slice(5)}</span>
+                                                            <span className="text-gray-600 ml-1">{formatDescription(item.description)}</span>
+                                                            <span className="text-gray-400 text-xs ml-1">({item.payer}{t.other_paid})</span>
+                                                            {isCleared && <span className="cleared-badge">{t.cleared}</span>}
+                                                        </div>
+                                                        <span className={`font-bold ${isCleared ? 'text-gray-400 line-through' : (item.isPositive ? 'text-green-600' : 'text-red-600')}`}>
+                                                            {item.isPositive ? '+' : '-'}{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                </SwipeToClear>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>);
@@ -2222,17 +2652,31 @@
                                     <span className="font-black text-white">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
                                 </div>
                                 {isExpanded && details.length > 0 && (
-                                    <div className="bg-green-50 rounded-xl p-3 mt-1 space-y-2">
-                                        {details.map((item, j) => (
-                                            <div key={j} className="flex justify-between items-center text-sm">
-                                                <div className="flex-1">
-                                                    <span className="font-bold text-gray-700">{item.date.slice(5)}</span>
-                                                    <span className="text-gray-600 ml-1">{formatDescription(item.description)}</span>
-                                                    <span className="text-gray-400 text-xs ml-1">({item.payer}{t.other_paid})</span>
-                                                </div>
-                                                <span className={`font-bold ${item.isPositive ? 'text-green-600' : 'text-red-600'}`}>{item.isPositive ? '+' : '-'}{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span>
-                                            </div>
-                                        ))}
+                                    <div className="bg-green-50 rounded-xl p-3 mt-1 space-y-1">
+                                        {details.map((item, j) => {
+                                            const isCleared = isTransactionCleared(item.id, viewingMemberDebt, d.from);
+                                            return (
+                                                <SwipeToClear 
+                                                    key={j} 
+                                                    onSwipe={() => toggleClearTransaction(item.id, viewingMemberDebt, d.from)}
+                                                    isCleared={isCleared}
+                                                    clearText={t.mark_cleared}
+                                                    unclearText={t.undo_cleared}
+                                                >
+                                                    <div className={`flex justify-between items-center text-sm p-2 rounded-lg ${isCleared ? 'cleared-item' : 'bg-white'}`}>
+                                                        <div className="flex-1">
+                                                            <span className="font-bold text-gray-700">{item.date.slice(5)}</span>
+                                                            <span className="text-gray-600 ml-1">{formatDescription(item.description)}</span>
+                                                            <span className="text-gray-400 text-xs ml-1">({item.payer}{t.other_paid})</span>
+                                                            {isCleared && <span className="cleared-badge">{t.cleared}</span>}
+                                                        </div>
+                                                        <span className={`font-bold ${isCleared ? 'text-gray-400 line-through' : (item.isPositive ? 'text-green-600' : 'text-red-600')}`}>
+                                                            {item.isPositive ? '+' : '-'}{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}
+                                                        </span>
+                                                    </div>
+                                                </SwipeToClear>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>);
@@ -2251,7 +2695,7 @@
                                     <button onClick={() => setFormData({...formData, txType: 'expense'})} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all flex items-center justify-center gap-2 ${formData.txType === 'expense' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-100 text-gray-400'}`}><Icons.TrendDown /> {t.expense}</button>
                                     <button onClick={() => setFormData({...formData, txType: 'income'})} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all flex items-center justify-center gap-2 ${formData.txType === 'income' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 text-gray-400'}`}><Icons.TrendUp /> {t.income}</button>
                                 </div></div>
-                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.category}</label><div className="grid grid-cols-5 gap-2">{allCategories.map(cat => (<button key={cat.id} onClick={() => setFormData({...formData, category: cat.id})} className={`p-2 rounded-xl text-center transition-all ${formData.category === cat.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}><div className="text-xl">{cat.icon}</div><div className="text-[10px] font-bold">{lang === 'zh' ? cat.name_zh : cat.name_en}</div></button>))}</div></div>
+                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.category}</label><div className="grid grid-cols-5 gap-2">{allCategories.map(cat => (<button key={cat.id} onClick={() => setFormData({...formData, category: cat.id})} className={`p-2 rounded-xl text-center transition-all ${formData.category === cat.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}><div className="text-xl flex items-center justify-center h-6">{renderCategoryIcon(cat.icon, 'text-xl')}</div><div className="text-[10px] font-bold">{lang === 'zh' ? cat.name_zh : cat.name_en}</div></button>))}</div></div>
                                 <div className="flex gap-3"><div className="flex-1"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.amount}</label><input type="number" inputMode="decimal" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-2xl font-black text-gray-800 outline-none" placeholder="0" /></div>{currentBook.currency !== 'TWD' && (<div className="w-28"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({...formData, exchangeRate: e.target.value})} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-xl font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}</div>
                                 <div className="grid grid-cols-3 gap-3"><div><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.date}</label><input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full px-2 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-800 outline-none" /></div><div className="col-span-2"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.item}</label><input type="text" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="e.g. Coffee" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-base font-bold text-gray-800 outline-none" /></div></div>
                                 <button onClick={handleSave} className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-xl btn-press mt-4">{editingId ? t.update : t.confirm}</button>
