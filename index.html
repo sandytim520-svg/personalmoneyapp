@@ -118,6 +118,13 @@
                 rate_hint: "修改後，新增記帳將預設此匯率。", confirm_update: "確認並更新舊資料",
                 fetch: "抓取", settled: "已結清", owe: "要給", receivables: "應收", payables: "應付",
                 settle_period: "本期全部結算 (歸零)", start_note: "開始記帳吧", payer: "付款人",
+                recurring: "固定收支", add_recurring: "新增固定收支", edit_recurring: "編輯固定收支",
+                recurring_name: "名稱", recurring_amount: "金額", recurring_interval: "重複週期",
+                interval_day: "天", interval_month: "月", interval_year: "年",
+                every: "每", repeat_once: "重複一次", date_range: "日期區間",
+                start_date_label: "開始日期", end_date_label: "結束日期", permanent: "永久",
+                no_recurring: "尚無固定收支", recurring_type: "類型", recurring_active: "啟用中",
+                recurring_paused: "已暫停", confirm_delete_recurring: "確定刪除此固定收支？",
                 split_target: "分給誰？", amount: "金額", date: "日期", item: "項目",
                 update: "更新", confirm: "確認", settle_details: "結算詳情", history: "歷史紀錄",
                 history_settle: "結算明細 (當時匯率)", no_payment: "無須付款", undo: "撤銷",
@@ -168,6 +175,13 @@
                 rate_hint: "This rate will be used for new entries.", confirm_update: "Update & Apply to Old",
                 fetch: "Fetch", settled: "Settled", owe: "owes", receivables: "To Receive", payables: "To Pay",
                 settle_period: "Settle Up (Clear All)", start_note: "Start splitting bills!", payer: "Payer",
+                recurring: "Recurring", add_recurring: "Add Recurring", edit_recurring: "Edit Recurring",
+                recurring_name: "Name", recurring_amount: "Amount", recurring_interval: "Repeat Cycle",
+                interval_day: "Day", interval_month: "Month", interval_year: "Year",
+                every: "Every", repeat_once: "repeat once", date_range: "Date Range",
+                start_date_label: "Start Date", end_date_label: "End Date", permanent: "Permanent",
+                no_recurring: "No recurring items", recurring_type: "Type", recurring_active: "Active",
+                recurring_paused: "Paused", confirm_delete_recurring: "Delete this recurring item?",
                 split_target: "Split with?", amount: "Amount", date: "Date", item: "Description",
                 update: "Update", confirm: "Confirm", settle_details: "Settlement Details", history: "History",
                 history_settle: "Settlement (Historical Rate)", no_payment: "No payments needed", undo: "Undo",
@@ -326,6 +340,8 @@
             Moon: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>,
             Sun: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>,
             Eye: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>,
+            Pause: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+            Play: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
         };
 
         const fetchExchangeRate = async (currencyCode) => {
@@ -351,6 +367,15 @@
             const [newBookType, setNewBookType] = useState('shared');
             const [isMemberManagerOpen, setIsMemberManagerOpen] = useState(false);
             const [memberManagerSource, setMemberManagerSource] = useState(null); // 'menu' or 'book'
+            const [recurringItems, setRecurringItems] = useState([]);
+            const [isRecurringListOpen, setIsRecurringListOpen] = useState(false);
+            const [isRecurringFormOpen, setIsRecurringFormOpen] = useState(false);
+            const [editingRecurring, setEditingRecurring] = useState(null);
+            const [recurringForm, setRecurringForm] = useState({
+                name: '', amount: '', txType: 'expense', intervalType: 'month', intervalValue: 1,
+                category: 'other', startDate: new Date().toISOString().split('T')[0], endDate: '', isPermanent: true,
+                payer: '', involved: []
+            });
             const [isBookMemberSettingsOpen, setIsBookMemberSettingsOpen] = useState(false);
             const [isModalOpen, setIsModalOpen] = useState(false);
             const [isRateModalOpen, setIsRateModalOpen] = useState(false);
@@ -537,7 +562,17 @@
                 };
                 const handleSt = (snapshot) => { const data = snapshot.val(); if (data) { const list = Object.keys(data).map(key => ({ id: key, ...data[key] })); list.sort((a, b) => b.settledAt - a.settledAt); setSettlements(list); } else setSettlements([]); };
                 txRef.on('value', handleTx); stRef.on('value', handleSt);
-                return () => { txRef.off(); stRef.off(); };
+                // Recurring items listener
+                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                const recurringRef = db.ref(recurringPath);
+                recurringRef.on('value', (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        const list = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+                        setRecurringItems(list);
+                    } else setRecurringItems([]);
+                });
+                return () => { txRef.off(); stRef.off(); recurringRef.off(); };
             }, [currentBookId, activeRate, sortNewestFirst]);
 
             useEffect(() => {
@@ -600,6 +635,122 @@
             const saveGlobalMember = () => { if (!editMemberName.trim()) return; if (editMemberName !== editingGlobalMember) db.ref('settings/globalMembers/' + editingGlobalMember).remove(); db.ref('settings/globalMembers/' + editMemberName.trim()).set(editMemberAvatar); setEditingGlobalMember(null); };
             const handleDeleteGlobalMember = (name) => { if (confirm(t.confirm_delete)) db.ref('settings/globalMembers/' + name).remove(); };
             const toggleBookMember = (member) => { const isIncluded = bookMembers.includes(member); let newMembers; if (isIncluded) { if (bookMembers.length <= 2) return alert(t.alert_min_members); newMembers = bookMembers.filter(m => m !== member); } else { newMembers = [...bookMembers, member]; } db.ref('booksMeta/' + currentBookId).update({ members: newMembers }); };
+
+            // Recurring transactions functions
+            const openRecurringForm = (item = null) => {
+                if (item) {
+                    setEditingRecurring(item.id);
+                    setRecurringForm({
+                        name: item.name || '', amount: item.amount || '', txType: item.txType || 'expense',
+                        intervalType: item.intervalType || 'month', intervalValue: item.intervalValue || 1,
+                        category: item.category || 'other', startDate: item.startDate || new Date().toISOString().split('T')[0],
+                        endDate: item.endDate || '', isPermanent: !item.endDate,
+                        payer: item.payer || bookMembers[0], involved: item.involved || bookMembers
+                    });
+                } else {
+                    setEditingRecurring(null);
+                    setRecurringForm({
+                        name: '', amount: '', txType: 'expense', intervalType: 'month', intervalValue: 1,
+                        category: 'other', startDate: new Date().toISOString().split('T')[0], endDate: '', isPermanent: true,
+                        payer: isPersonalBook ? currentBook.owner : bookMembers[0], involved: isPersonalBook ? [currentBook.owner] : bookMembers
+                    });
+                }
+                setIsRecurringFormOpen(true);
+            };
+            const saveRecurring = () => {
+                if (!recurringForm.name.trim() || !recurringForm.amount) return alert(t.alert_input);
+                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                const data = {
+                    name: recurringForm.name.trim(),
+                    amount: parseFloat(recurringForm.amount),
+                    txType: recurringForm.txType,
+                    intervalType: recurringForm.intervalType,
+                    intervalValue: parseInt(recurringForm.intervalValue),
+                    startDate: recurringForm.startDate,
+                    endDate: recurringForm.isPermanent ? null : recurringForm.endDate,
+                    isActive: true,
+                    lastGenerated: null,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                };
+                if (isPersonalBook) {
+                    data.category = recurringForm.category;
+                    data.payer = currentBook.owner;
+                    data.involved = [currentBook.owner];
+                } else {
+                    data.payer = recurringForm.payer;
+                    data.involved = recurringForm.involved;
+                }
+                if (editingRecurring) {
+                    db.ref(recurringPath + '/' + editingRecurring).update(data);
+                } else {
+                    db.ref(recurringPath).push(data);
+                }
+                setIsRecurringFormOpen(false);
+                setEditingRecurring(null);
+            };
+            const deleteRecurring = (id) => {
+                if (!confirm(t.confirm_delete_recurring)) return;
+                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                db.ref(recurringPath + '/' + id).remove();
+            };
+            const toggleRecurringActive = (id, currentActive) => {
+                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                db.ref(recurringPath + '/' + id).update({ isActive: !currentActive });
+            };
+            const getIntervalLabel = (item) => {
+                const typeLabels = { day: t.interval_day, month: t.interval_month, year: t.interval_year };
+                return `${t.every} ${item.intervalValue} ${typeLabels[item.intervalType]} ${t.repeat_once}`;
+            };
+            // Generate recurring transactions
+            useEffect(() => {
+                if (!recurringItems.length || loading) return;
+                const today = new Date().toISOString().split('T')[0];
+                const txPath = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
+                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                
+                recurringItems.forEach(item => {
+                    if (!item.isActive) return;
+                    if (item.endDate && item.endDate < today) return;
+                    if (item.startDate > today) return;
+                    
+                    let shouldGenerate = false;
+                    let nextDate = item.lastGenerated ? new Date(item.lastGenerated) : new Date(item.startDate);
+                    
+                    if (!item.lastGenerated) {
+                        shouldGenerate = true;
+                        nextDate = new Date(item.startDate);
+                    } else {
+                        // Calculate next generation date
+                        if (item.intervalType === 'day') nextDate.setDate(nextDate.getDate() + item.intervalValue);
+                        else if (item.intervalType === 'month') nextDate.setMonth(nextDate.getMonth() + item.intervalValue);
+                        else if (item.intervalType === 'year') nextDate.setFullYear(nextDate.getFullYear() + item.intervalValue);
+                        
+                        if (nextDate <= new Date(today)) shouldGenerate = true;
+                    }
+                    
+                    if (shouldGenerate) {
+                        const txData = {
+                            date: nextDate.toISOString().split('T')[0],
+                            description: item.name,
+                            amount: item.amount,
+                            payer: item.payer,
+                            involved: item.involved,
+                            splitType: 'equal',
+                            currency: currentBook.currency,
+                            exchangeRate: activeRate,
+                            createdAt: firebase.database.ServerValue.TIMESTAMP,
+                            isRecurring: true,
+                            recurringId: item.id
+                        };
+                        if (isPersonalBook) {
+                            txData.category = item.category;
+                            txData.txType = item.txType;
+                        }
+                        db.ref(txPath).push(txData);
+                        db.ref(recurringPath + '/' + item.id).update({ lastGenerated: nextDate.toISOString().split('T')[0] });
+                    }
+                });
+            }, [recurringItems, currentBookId, loading]);
 
             const openAddBookModal = () => { setAddBookStep(1); setNewBookType('shared'); setNewBookName(''); setNewBookCurrency('TWD'); setNewBookOwner(''); setSelectedMembers([]); setIsAddBookOpen(true); };
 
@@ -1521,6 +1672,205 @@
                                     </div>
                                 </div>
                             )}
+
+                            {/* Recurring Transactions */}
+                            <button onClick={() => { setIsRecurringListOpen(true); setIsSettingsOpen(false); }} className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+                                <div className="flex items-center gap-2"><Icons.Refresh /><span className="font-bold text-gray-800">{t.recurring}</span></div>
+                                <div className="flex items-center gap-2">
+                                    <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full text-sm font-bold">{recurringItems.length}</span>
+                                    <Icons.ChevronRight />
+                                </div>
+                            </button>
+                        </div>
+                    </div>}
+
+                    {/* Recurring List Modal */}
+                    {isRecurringListOpen && <div className="fixed inset-0 z-[65] bg-gray-100 flex flex-col modal-enter">
+                        <div className="bg-white px-6 py-4 shadow-sm flex items-center justify-between sticky top-0 z-10">
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => { setIsRecurringListOpen(false); setIsSettingsOpen(true); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button>
+                                <h2 className="text-xl font-black text-gray-800">{t.recurring}</h2>
+                                <span className="bg-blue-600 text-white px-2 py-0.5 rounded-full text-sm font-bold">{recurringItems.length}</span>
+                            </div>
+                            <button onClick={() => openRecurringForm(null)} className="px-3 py-2 bg-black text-white rounded-xl font-bold text-sm flex items-center gap-1"><Icons.Plus /> {t.add}</button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {recurringItems.length === 0 ? (
+                                <div className="text-center py-20 text-gray-400">
+                                    <p className="text-4xl mb-2">🔄</p>
+                                    <p>{t.no_recurring}</p>
+                                </div>
+                            ) : (
+                                recurringItems.map(item => {
+                                    const categoryInfo = isPersonalBook ? (allCategories.find(c => c.id === item.category) || allCategories[allCategories.length - 1]) : null;
+                                    return (
+                                        <div key={item.id} className={`bg-white p-4 rounded-2xl shadow-sm border-2 ${item.isActive ? 'border-transparent' : 'border-gray-200 opacity-60'}`}>
+                                            <div className="flex items-start justify-between mb-2">
+                                                <div className="flex items-center gap-3">
+                                                    {isPersonalBook && <span className="text-2xl">{categoryInfo?.icon}</span>}
+                                                    <div>
+                                                        <p className="font-bold text-gray-800 text-lg">{item.name}</p>
+                                                        <p className="text-xs text-gray-400">{getIntervalLabel(item)}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`text-xl font-black ${isPersonalBook ? (item.txType === 'income' ? 'text-green-600' : 'text-red-600') : 'text-gray-800'}`}>
+                                                        {isPersonalBook && (item.txType === 'income' ? '+' : '-')}{currentCurrency.symbol}{item.amount?.toLocaleString()}
+                                                    </p>
+                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${item.isActive ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                                                        {item.isActive ? t.recurring_active : t.recurring_paused}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs text-gray-400 mt-2 pt-2 border-t border-gray-100">
+                                                <span>{item.startDate} ~ {item.endDate || t.permanent}</span>
+                                                <div className="flex gap-1">
+                                                    <button onClick={() => toggleRecurringActive(item.id, item.isActive)} className={`p-2 rounded-lg ${item.isActive ? 'text-orange-500 hover:bg-orange-50' : 'text-green-500 hover:bg-green-50'}`}>
+                                                        {item.isActive ? <Icons.Pause /> : <Icons.Play />}
+                                                    </button>
+                                                    <button onClick={() => openRecurringForm(item)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"><Icons.Edit /></button>
+                                                    <button onClick={() => deleteRecurring(item.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg"><Icons.Trash /></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>}
+
+                    {/* Recurring Form Modal */}
+                    {isRecurringFormOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter">
+                        <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar">
+                            <h3 className="text-xl font-black text-gray-800 mb-4">{editingRecurring ? t.edit_recurring : t.add_recurring}</h3>
+                            <div className="space-y-4">
+                                {/* Name */}
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 ml-1">{t.recurring_name}</label>
+                                    <input type="text" value={recurringForm.name} onChange={e => setRecurringForm({...recurringForm, name: e.target.value})} 
+                                        className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold outline-none mt-1" placeholder={lang === 'zh' ? '房租' : 'Rent'} />
+                                </div>
+                                
+                                {/* Amount & Type (for personal) */}
+                                <div className="flex gap-3">
+                                    <div className="flex-1">
+                                        <label className="text-xs font-bold text-gray-400 ml-1">{t.recurring_amount}</label>
+                                        <input type="number" value={recurringForm.amount} onChange={e => setRecurringForm({...recurringForm, amount: e.target.value})} 
+                                            className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold outline-none mt-1" placeholder="0" />
+                                    </div>
+                                    {isPersonalBook && (
+                                        <div className="w-24">
+                                            <label className="text-xs font-bold text-gray-400 ml-1">{t.recurring_type}</label>
+                                            <div className="flex mt-1 bg-gray-50 rounded-xl p-1">
+                                                <button onClick={() => setRecurringForm({...recurringForm, txType: 'expense'})} 
+                                                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${recurringForm.txType === 'expense' ? 'bg-red-500 text-white' : 'text-gray-400'}`}>-</button>
+                                                <button onClick={() => setRecurringForm({...recurringForm, txType: 'income'})} 
+                                                    className={`flex-1 py-2 rounded-lg text-sm font-bold ${recurringForm.txType === 'income' ? 'bg-green-500 text-white' : 'text-gray-400'}`}>+</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Interval */}
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 ml-1">{t.recurring_interval}</label>
+                                    <div className="flex gap-2 mt-1">
+                                        <div className="flex items-center gap-2 flex-1 bg-gray-50 rounded-xl px-3 py-2">
+                                            <span className="text-gray-600 font-bold text-sm">{t.every}</span>
+                                            <select value={recurringForm.intervalValue} onChange={e => setRecurringForm({...recurringForm, intervalValue: e.target.value})}
+                                                className="bg-white border border-gray-200 rounded-lg px-2 py-1 font-bold text-center outline-none">
+                                                {recurringForm.intervalType === 'day' && [...Array(30)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                {recurringForm.intervalType === 'month' && [...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                {recurringForm.intervalType === 'year' && [...Array(5)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                            </select>
+                                            <select value={recurringForm.intervalType} onChange={e => setRecurringForm({...recurringForm, intervalType: e.target.value, intervalValue: 1})}
+                                                className="bg-white border border-gray-200 rounded-lg px-2 py-1 font-bold outline-none">
+                                                <option value="day">{t.interval_day}</option>
+                                                <option value="month">{t.interval_month}</option>
+                                                <option value="year">{t.interval_year}</option>
+                                            </select>
+                                            <span className="text-gray-600 font-bold text-sm">{t.repeat_once}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Category (personal only) */}
+                                {isPersonalBook && (
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-400 ml-1">{t.category} ({t.cancel})</label>
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {allCategories.map(cat => (
+                                                <button key={cat.id} onClick={() => setRecurringForm({...recurringForm, category: cat.id})}
+                                                    className={`px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-1 ${recurringForm.category === cat.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                                    <span>{cat.icon}</span> {lang === 'zh' ? cat.name_zh : cat.name_en}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Payer & Involved (shared only) */}
+                                {!isPersonalBook && (
+                                    <>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-400 ml-1">{t.payer}</label>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {bookMembers.map(m => (
+                                                    <button key={m} onClick={() => setRecurringForm({...recurringForm, payer: m})}
+                                                        className={`px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-1 ${recurringForm.payer === m ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                                        <span>{globalMembers[m]}</span> {m}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-400 ml-1">{t.involved_members}</label>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                {bookMembers.map(m => (
+                                                    <button key={m} onClick={() => {
+                                                        const newInvolved = recurringForm.involved.includes(m) 
+                                                            ? recurringForm.involved.filter(x => x !== m) 
+                                                            : [...recurringForm.involved, m];
+                                                        if (newInvolved.length > 0) setRecurringForm({...recurringForm, involved: newInvolved});
+                                                    }}
+                                                        className={`px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-1 ${recurringForm.involved.includes(m) ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                                        <span>{globalMembers[m]}</span> {m}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Date Range */}
+                                <div>
+                                    <label className="text-xs font-bold text-gray-400 ml-1">{t.date_range}</label>
+                                    <div className="space-y-2 mt-2">
+                                        <div className="flex gap-2 items-center">
+                                            <span className="text-sm text-gray-500 w-16">{t.start_date_label}</span>
+                                            <input type="date" value={recurringForm.startDate} onChange={e => setRecurringForm({...recurringForm, startDate: e.target.value})}
+                                                className="flex-1 px-3 py-2 bg-gray-50 rounded-xl font-bold outline-none text-sm" />
+                                        </div>
+                                        <div className="flex gap-2 items-center">
+                                            <span className="text-sm text-gray-500 w-16">{t.end_date_label}</span>
+                                            <button onClick={() => setRecurringForm({...recurringForm, isPermanent: true, endDate: ''})}
+                                                className={`px-3 py-2 rounded-xl text-sm font-bold ${recurringForm.isPermanent ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}>{t.permanent}</button>
+                                            {!recurringForm.isPermanent && (
+                                                <input type="date" value={recurringForm.endDate} onChange={e => setRecurringForm({...recurringForm, endDate: e.target.value})}
+                                                    className="flex-1 px-3 py-2 bg-gray-50 rounded-xl font-bold outline-none text-sm" />
+                                            )}
+                                            {recurringForm.isPermanent && (
+                                                <button onClick={() => setRecurringForm({...recurringForm, isPermanent: false})}
+                                                    className="px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold">{t.end_date_label}</button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 mt-6">
+                                <button onClick={() => setIsRecurringFormOpen(false)} className="flex-1 py-3 rounded-xl font-bold text-gray-500 bg-gray-100">{t.cancel}</button>
+                                <button onClick={saveRecurring} className="flex-1 py-3 rounded-xl font-bold text-white bg-black">{t.save}</button>
+                            </div>
                         </div>
                     </div>}
 
