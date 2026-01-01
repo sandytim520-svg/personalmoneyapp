@@ -370,22 +370,14 @@
                     {!isCleared && <div className="swipe-clear-bg">
                         <span className="text-xs font-bold">{clearText}</span>
                     </div>}
-                    {/* 左側取消結清背景 - 只在滑動時才顯示，平時隱藏 */}
-                    {isCleared && currentX < 0 && <div className="swipe-unclear-bg-left">
-                        <span className="text-xs font-bold">✓</span>
+                    {/* 左側取消結清背景 - 只在滑動且滑動距離超過一定值時才顯示，平時完全隱藏 */}
+                    {isCleared && currentX < -20 && <div className="swipe-unclear-bg-left">
+                        <span className="text-xs font-bold">取消</span>
                     </div>}
                     <div 
                         className={`swipe-content ${isSwiping ? 'swiping' : ''}`}
                         style={{ transform: `translateX(${isCleared ? -currentX : -currentX}px)` }}
                         onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                    >
-                        {children}
-                    </div>
-                </div>
-            );
-        };
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                     >
@@ -2695,7 +2687,7 @@
                             <h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><span>{globalMembers[viewingMemberDebt]}</span> {viewingMemberDebt}</h3>
                             <button onClick={() => { setViewingMemberDebt(null); setExpandedDebtDetail(null); }} className="p-2 bg-gray-100 rounded-full">✕</button>
                         </div>
-                        <p className="text-xs text-gray-400 mb-4 text-center">{lang === 'zh' ? '← 左滑結清 · 右滑取消 →' : '← Swipe left to clear · right to undo →'}</p>
+                        <p className="text-xs text-gray-400 mb-4 text-center">{lang === 'zh' ? '← 左滑結清 · 已結清項目右滑取消 →' : '← Swipe left to clear · right to undo →'}</p>
                         <div className="space-y-4">{(() => { const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>
                         {toPay.length > 0 && (<div><p className="text-xs font-bold text-red-500 mb-2 uppercase">{t.payables}</p>{toPay.map((d, i) => {
                             const isExpanded = expandedDebtDetail && expandedDebtDetail.type === 'pay' && expandedDebtDetail.person === d.to;
@@ -2704,13 +2696,13 @@
                             const remainingAmount = Math.round(d.amount + clearedAmount);
                             const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.to);
                             return (<div key={i} className="mb-2">
-                                <div className={`flex justify-between items-center p-3 rounded-xl transition-all ${isAllCleared ? 'bg-red-300' : 'bg-red-500'}`}>
+                                <div className={`flex justify-between items-center p-3 rounded-xl transition-all ${isAllCleared ? 'bg-red-500 opacity-60' : 'bg-red-500'}`}>
                                     <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'pay', person: d.to })} className="flex-1 cursor-pointer active:opacity-80">
-                                        <span className={`font-bold text-white ${isAllCleared ? 'opacity-70' : ''}`}>{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span>
+                                        <span className={`font-bold text-white ${isAllCleared ? 'opacity-80' : ''}`}>{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {isAllCleared ? (
-                                            <span className="font-black text-white line-through opacity-60">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                            <span className="font-black text-white line-through opacity-70">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
                                         ) : clearedAmount !== 0 ? (
                                             <div className="text-right">
                                                 <span className="font-black text-white">{currentCurrency.symbol}{remainingAmount.toLocaleString()}</span>
@@ -2742,10 +2734,9 @@
                                                 >
                                                     <div className={`flex justify-between items-center text-sm p-2 rounded-lg ${isCleared ? 'cleared-item' : 'bg-white'}`}>
                                                         <div className="flex-1">
-                                                            <span className="font-bold debt-detail-date">{item.date.slice(5)}</span>
-                                                            <span className="debt-detail-desc ml-1">{formatDescription(item.description)}</span>
-                                                            <span className="text-gray-400 text-xs ml-1">({item.payer}{t.other_paid})</span>
-                                                            {isCleared && <span className="cleared-badge">{t.cleared}</span>}
+                                                            <span className={`font-bold debt-detail-date ${isCleared ? 'opacity-60' : ''}`}>{item.date.slice(5)}</span>
+                                                            <span className={`debt-detail-desc ml-1 ${isCleared ? 'opacity-60' : ''}`}>{formatDescription(item.description)}</span>
+                                                            <span className={`text-gray-400 text-xs ml-1 ${isCleared ? 'opacity-60' : ''}`}>({item.payer}{t.other_paid})</span>
                                                         </div>
                                                         <span className={`font-bold ${isCleared ? 'text-gray-400 line-through' : (item.isPositive ? 'text-green-600' : 'text-red-600')}`}>
                                                             {item.isPositive ? '+' : '-'}{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}
@@ -2765,13 +2756,13 @@
                             const remainingAmount = Math.round(d.amount - clearedAmount);
                             const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.from);
                             return (<div key={i} className="mb-2">
-                                <div className={`flex justify-between items-center p-3 rounded-xl transition-all ${isAllCleared ? 'bg-green-400' : 'bg-green-600'}`}>
+                                <div className={`flex justify-between items-center p-3 rounded-xl transition-all ${isAllCleared ? 'bg-green-600 opacity-60' : 'bg-green-600'}`}>
                                     <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'receive', person: d.from })} className="flex-1 cursor-pointer active:opacity-80">
-                                        <span className={`font-bold text-white ${isAllCleared ? 'opacity-70' : ''}`}>{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span>
+                                        <span className={`font-bold text-white ${isAllCleared ? 'opacity-80' : ''}`}>{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {isAllCleared ? (
-                                            <span className="font-black text-white line-through opacity-60">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                            <span className="font-black text-white line-through opacity-70">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
                                         ) : clearedAmount !== 0 ? (
                                             <div className="text-right">
                                                 <span className="font-black text-white">{currentCurrency.symbol}{remainingAmount.toLocaleString()}</span>
@@ -2803,10 +2794,9 @@
                                                 >
                                                     <div className={`flex justify-between items-center text-sm p-2 rounded-lg ${isCleared ? 'cleared-item' : 'bg-white'}`}>
                                                         <div className="flex-1">
-                                                            <span className="font-bold debt-detail-date">{item.date.slice(5)}</span>
-                                                            <span className="debt-detail-desc ml-1">{formatDescription(item.description)}</span>
-                                                            <span className="text-gray-400 text-xs ml-1">({item.payer}{t.other_paid})</span>
-                                                            {isCleared && <span className="cleared-badge">{t.cleared}</span>}
+                                                            <span className={`font-bold debt-detail-date ${isCleared ? 'opacity-60' : ''}`}>{item.date.slice(5)}</span>
+                                                            <span className={`debt-detail-desc ml-1 ${isCleared ? 'opacity-60' : ''}`}>{formatDescription(item.description)}</span>
+                                                            <span className={`text-gray-400 text-xs ml-1 ${isCleared ? 'opacity-60' : ''}`}>({item.payer}{t.other_paid})</span>
                                                         </div>
                                                         <span className={`font-bold ${isCleared ? 'text-gray-400 line-through' : (item.isPositive ? 'text-green-600' : 'text-red-600')}`}>
                                                             {item.isPositive ? '+' : '-'}{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}
