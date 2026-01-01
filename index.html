@@ -1747,54 +1747,57 @@
                         {transactions.length > 0 && (<div className="flex justify-end mb-2"><button onClick={() => setIsFilterOpen(true)} className="px-3 py-2 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-xl font-bold text-sm flex items-center gap-1 transition"><Icons.Filter /> {t.filter}</button></div>)}
                         {loading && <div className="text-center text-gray-400 py-10">Loading...</div>}
                         {!loading && transactions.length === 0 && <div className="text-center py-20 text-gray-400 opacity-50"><p className="text-4xl mb-2">✨</p><p>{t.start_note}</p></div>}
-                        {transactions.map((t_item) => {
+                        {transactions.map((t_item, index) => {
                             const avatar = globalMembers[t_item.payer] || '👻';
                             const involvedCount = t_item.involved ? t_item.involved.length : bookMembers.length;
                             const categoryInfo = allCategories.find(c => c.id === t_item.category) || allCategories[allCategories.length - 1];
                             const descWithInfo = t_item.description + (t_item.splitType === 'custom' ? ' (AB分)' : '');
                             const isLongDesc = descWithInfo.length > 12;
+                            const prevItem = index > 0 ? transactions[index - 1] : null;
+                            const showDateHeader = !prevItem || prevItem.date !== t_item.date;
+                            const formattedDate = t_item.date ? t_item.date.slice(5).replace('-', '/') : '';
                             
                             if (isPersonalBook) {
                                 return (
-                                    <SwipeToDelete key={t_item.id} onDelete={() => handleDelete(t_item.id)}>
-                                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-transparent hover:border-gray-200 transition-all">
-                                            <div className="flex items-start gap-3 mb-2">
-                                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl bg-gray-100">{categoryInfo.icon}</div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-xs font-bold text-gray-400 mb-0.5">{t_item.date}</div>
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}</p>
-                                                        <div className="text-right shrink-0">
-                                                            <p className={`text-xl font-black ${t_item.txType === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                                                                {t_item.txType === 'income' ? '+' : '-'}{currentCurrency.symbol}{t_item.amount.toLocaleString()}
-                                                            </p>
+                                    <React.Fragment key={t_item.id}>
+                                        {showDateHeader && <div className="text-lg font-black text-gray-500 mt-4 mb-2 ml-1">{formattedDate}</div>}
+                                        <SwipeToDelete onDelete={() => handleDelete(t_item.id)}>
+                                            <div className="bg-white p-4 rounded-2xl shadow-sm border border-transparent hover:border-gray-200 transition-all">
+                                                <div className="flex items-start gap-3 mb-2">
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl bg-gray-100">{categoryInfo.icon}</div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}</p>
+                                                            <div className="text-right shrink-0">
+                                                                <p className={`text-xl font-black ${t_item.txType === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                                                                    {t_item.txType === 'income' ? '+' : '-'}{currentCurrency.symbol}{t_item.amount.toLocaleString()}
+                                                                </p>
+                                                            </div>
                                                         </div>
+                                                        <p className="text-xs text-gray-400 mt-1">{lang === 'zh' ? categoryInfo.name_zh : categoryInfo.name_en}</p>
                                                     </div>
-                                                    <p className="text-xs text-gray-400 mt-1">{lang === 'zh' ? categoryInfo.name_zh : categoryInfo.name_en}</p>
                                                 </div>
-                                            </div>
-                                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
-                                                <span className="text-xs text-gray-400 font-bold">{t_item.date}</span>
-                                                <div className="flex gap-1">
+                                                <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-50">
                                                     <button onClick={() => openModal(t_item)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"><Icons.Edit /></button>
                                                     <button onClick={() => handleDelete(t_item.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg"><Icons.Trash /></button>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </SwipeToDelete>
+                                        </SwipeToDelete>
+                                    </React.Fragment>
                                 );
                             }
                             
                             return (
-                                <SwipeToDelete key={t_item.id} onDelete={() => handleDelete(t_item.id)}>
-                                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-transparent hover:border-gray-200 transition-all">
+                                <React.Fragment key={t_item.id}>
+                                    {showDateHeader && <div className="text-lg font-black text-gray-500 mt-4 mb-2 ml-1">{formattedDate}</div>}
+                                    <SwipeToDelete onDelete={() => handleDelete(t_item.id)}>
+                                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-transparent hover:border-gray-200 transition-all">
                                         <div onClick={() => setViewingFilteredTx(t_item)} className="flex items-start gap-3 mb-2 cursor-pointer active:opacity-70">
                                             <div className="flex flex-col items-center min-w-[3rem]">
                                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl font-bold shadow-sm bg-gray-100">{avatar}</div>
                                                 <span className="text-[10px] font-bold text-gray-400 mt-1 text-center leading-tight">{t_item.payer}</span>
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-xs font-bold text-gray-400 mb-0.5">{t_item.date}</div>
                                                 {isLongDesc ? (
                                                     <div>
                                                         <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
@@ -1820,15 +1823,13 @@
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
-                                            <span className="text-xs text-gray-400 font-bold">{t_item.date}</span>
-                                            <div className="flex gap-1">
+                                        <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-50">
                                                 <button onClick={() => openModal(t_item)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"><Icons.Edit /></button>
                                                 <button onClick={() => handleDelete(t_item.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg"><Icons.Trash /></button>
                                             </div>
                                         </div>
-                                    </div>
-                                </SwipeToDelete>
+                                    </SwipeToDelete>
+                                </React.Fragment>
                             );
                         })}
                         <div ref={bottomRef} />
