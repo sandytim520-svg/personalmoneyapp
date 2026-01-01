@@ -366,18 +366,26 @@
 
             return (
                 <div className="swipe-container rounded-xl overflow-hidden" style={{ position: 'relative' }}>
-                    {/* 右側綠色結清背景 */}
+                    {/* 右側綠色結清背景 - 只有未結清時顯示 */}
                     {!isCleared && <div className="swipe-clear-bg">
                         <span className="text-xs font-bold">{clearText}</span>
                     </div>}
-                    {/* 左側橘色取消結清背景 */}
-                    {isCleared && <div className="swipe-unclear-bg-left">
+                    {/* 左側取消結清背景 - 只在滑動時才顯示，平時隱藏 */}
+                    {isCleared && currentX < 0 && <div className="swipe-unclear-bg-left">
                         <span className="text-xs font-bold">✓</span>
                     </div>}
                     <div 
                         className={`swipe-content ${isSwiping ? 'swiping' : ''}`}
                         style={{ transform: `translateX(${isCleared ? -currentX : -currentX}px)` }}
                         onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                        {children}
+                    </div>
+                </div>
+            );
+        };
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
                     >
@@ -2696,9 +2704,9 @@
                             const remainingAmount = Math.round(d.amount + clearedAmount);
                             const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.to);
                             return (<div key={i} className="mb-2">
-                                <div className="flex justify-between items-center bg-red-500 p-3 rounded-xl">
+                                <div className={`flex justify-between items-center p-3 rounded-xl transition-all ${isAllCleared ? 'bg-red-300' : 'bg-red-500'}`}>
                                     <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'pay', person: d.to })} className="flex-1 cursor-pointer active:opacity-80">
-                                        <span className="font-bold text-white">{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span>
+                                        <span className={`font-bold text-white ${isAllCleared ? 'opacity-70' : ''}`}>{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {isAllCleared ? (
@@ -2713,9 +2721,10 @@
                                         )}
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); isAllCleared ? unclearAllBetweenTwo(viewingMemberDebt, d.to) : clearAllBetweenTwo(viewingMemberDebt, d.to); }}
-                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${isAllCleared ? 'bg-white/20 text-white' : 'bg-white text-red-500'}`}
+                                            className="w-6 h-6 rounded border-2 border-white flex items-center justify-center transition-all"
+                                            style={{ backgroundColor: isAllCleared ? 'white' : 'transparent' }}
                                         >
-                                            {isAllCleared ? '↩' : '✓'}
+                                            {isAllCleared && <span className="text-red-500 text-sm font-bold">✓</span>}
                                         </button>
                                     </div>
                                 </div>
@@ -2756,9 +2765,9 @@
                             const remainingAmount = Math.round(d.amount - clearedAmount);
                             const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.from);
                             return (<div key={i} className="mb-2">
-                                <div className="flex justify-between items-center bg-green-600 p-3 rounded-xl">
+                                <div className={`flex justify-between items-center p-3 rounded-xl transition-all ${isAllCleared ? 'bg-green-400' : 'bg-green-600'}`}>
                                     <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'receive', person: d.from })} className="flex-1 cursor-pointer active:opacity-80">
-                                        <span className="font-bold text-white">{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span>
+                                        <span className={`font-bold text-white ${isAllCleared ? 'opacity-70' : ''}`}>{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {isAllCleared ? (
@@ -2773,9 +2782,10 @@
                                         )}
                                         <button 
                                             onClick={(e) => { e.stopPropagation(); isAllCleared ? unclearAllBetweenTwo(viewingMemberDebt, d.from) : clearAllBetweenTwo(viewingMemberDebt, d.from); }}
-                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${isAllCleared ? 'bg-white/20 text-white' : 'bg-white text-green-600'}`}
+                                            className="w-6 h-6 rounded border-2 border-white flex items-center justify-center transition-all"
+                                            style={{ backgroundColor: isAllCleared ? 'white' : 'transparent' }}
                                         >
-                                            {isAllCleared ? '↩' : '✓'}
+                                            {isAllCleared && <span className="text-green-600 text-sm font-bold">✓</span>}
                                         </button>
                                     </div>
                                 </div>
