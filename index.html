@@ -35,6 +35,7 @@
         /* Swipe to clear styles */
         .swipe-clear-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #10B981; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 0.75rem; }
         .swipe-unclear-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #F59E0B; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 0.75rem; }
+        .swipe-unclear-bg-left { position: absolute; left: 0; top: 0; bottom: 0; width: 100px; background: #F59E0B; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 0.75rem; }
         .cleared-item { opacity: 0.7; background: linear-gradient(90deg, #D1FAE5 0%, #ECFDF5 100%) !important; }
         .cleared-badge { background: #10B981; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
         /* Dark Mode Styles */
@@ -93,6 +94,12 @@
         .dark .selected-book { background-color: #F9FAFB !important; border-color: #F9FAFB !important; }
         .dark .selected-book-text { color: #1a1a1a !important; }
         .dark .selected-book-subtext { color: #4B5563 !important; }
+        /* 深色模式下共同帳本明細的日期和項目改為深灰色 */
+        .debt-detail-date { color: #374151; }
+        .debt-detail-desc { color: #4B5563; }
+        .dark .debt-detail-date { color: #9CA3AF !important; }
+        .dark .debt-detail-desc { color: #9CA3AF !important; }
+        .dark .cleared-item { background: linear-gradient(90deg, #064e3b 0%, #065F46 100%) !important; }
     </style>
 </head>
 <body>
@@ -322,7 +329,8 @@
         };
 
         // Swipe to Clear/Unclear Component for debt details
-        const SwipeToClear = ({ children, onSwipe, isCleared, clearText = '結清', unclearText = '取消' }) => {
+        // 往左滑 = 結清, 往右滑 = 取消結清
+        const SwipeToClear = ({ children, onClear, onUnclear, isCleared, clearText = '結清' }) => {
             const [startX, setStartX] = useState(0);
             const [currentX, setCurrentX] = useState(0);
             const [isSwiping, setIsSwiping] = useState(false);
@@ -336,8 +344,11 @@
             const handleTouchMove = (e) => {
                 if (!isSwiping) return;
                 const diff = startX - e.touches[0].clientX;
-                if (diff > 0) {
+                // 未結清時只能左滑（結清），已結清時只能右滑（取消）
+                if (!isCleared && diff > 0) {
                     setCurrentX(Math.min(diff, 100));
+                } else if (isCleared && diff < 0) {
+                    setCurrentX(Math.max(diff, -100));
                 } else {
                     setCurrentX(0);
                 }
@@ -345,20 +356,27 @@
 
             const handleTouchEnd = () => {
                 setIsSwiping(false);
-                if (currentX > swipeThreshold) {
-                    onSwipe();
+                if (!isCleared && currentX > swipeThreshold) {
+                    onClear && onClear();
+                } else if (isCleared && currentX < -swipeThreshold) {
+                    onUnclear && onUnclear();
                 }
                 setCurrentX(0);
             };
 
             return (
                 <div className="swipe-container rounded-xl overflow-hidden" style={{ position: 'relative' }}>
-                    <div className={isCleared ? "swipe-unclear-bg" : "swipe-clear-bg"}>
-                        <span className="text-xs font-bold">{isCleared ? unclearText : clearText}</span>
-                    </div>
+                    {/* 右側綠色結清背景 */}
+                    {!isCleared && <div className="swipe-clear-bg">
+                        <span className="text-xs font-bold">{clearText}</span>
+                    </div>}
+                    {/* 左側橘色取消結清背景 */}
+                    {isCleared && <div className="swipe-unclear-bg-left">
+                        <span className="text-xs font-bold">✓</span>
+                    </div>}
                     <div 
                         className={`swipe-content ${isSwiping ? 'swiping' : ''}`}
-                        style={{ transform: `translateX(-${currentX}px)` }}
+                        style={{ transform: `translateX(${isCleared ? -currentX : -currentX}px)` }}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
@@ -1084,6 +1102,72 @@
                     db.ref(clearedPath + '/' + clearKey).set(clearData);
                     db.ref(clearedPath + '/' + reverseKey).set(clearData);
                 }
+            };
+            
+            // 結清某筆交易
+            const clearTransaction = (txId, me, other) => {
+                const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
+                const clearKey = `${txId}_${me}_${other}`;
+                const reverseKey = `${txId}_${other}_${me}`;
+                const clearData = {
+                    clearedAt: firebase.database.ServerValue.TIMESTAMP,
+                    clearedBy: me,
+                    parties: [me, other]
+                };
+                db.ref(clearedPath + '/' + clearKey).set(clearData);
+                db.ref(clearedPath + '/' + reverseKey).set(clearData);
+            };
+            
+            // 取消結清某筆交易
+            const unclearTransaction = (txId, me, other) => {
+                const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
+                const clearKey = `${txId}_${me}_${other}`;
+                const reverseKey = `${txId}_${other}_${me}`;
+                db.ref(clearedPath + '/' + clearKey).remove();
+                db.ref(clearedPath + '/' + reverseKey).remove();
+            };
+            
+            // 整筆結清（結清兩人之間所有未結清的交易）
+            const clearAllBetweenTwo = (me, other) => {
+                const details = getDetailBetweenTwo(me, other);
+                details.forEach(item => {
+                    if (!isTransactionCleared(item.id, me, other)) {
+                        clearTransaction(item.id, me, other);
+                    }
+                });
+            };
+            
+            // 取消整筆結清
+            const unclearAllBetweenTwo = (me, other) => {
+                const details = getDetailBetweenTwo(me, other);
+                details.forEach(item => {
+                    if (isTransactionCleared(item.id, me, other)) {
+                        unclearTransaction(item.id, me, other);
+                    }
+                });
+            };
+            
+            // 檢查兩人之間是否全部已結清
+            const isAllClearedBetweenTwo = (me, other) => {
+                const details = getDetailBetweenTwo(me, other);
+                if (details.length === 0) return false;
+                return details.every(item => isTransactionCleared(item.id, me, other));
+            };
+            
+            // 計算兩人之間已結清的金額
+            const getClearedAmountBetweenTwo = (me, other) => {
+                const details = getDetailBetweenTwo(me, other);
+                let clearedAmount = 0;
+                details.forEach(item => {
+                    if (isTransactionCleared(item.id, me, other)) {
+                        if (item.isPositive) {
+                            clearedAmount += item.amount;
+                        } else {
+                            clearedAmount -= item.amount;
+                        }
+                    }
+                });
+                return clearedAmount;
             };
 
             const isTransactionCleared = (txId, me, other) => {
@@ -2603,15 +2687,37 @@
                             <h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><span>{globalMembers[viewingMemberDebt]}</span> {viewingMemberDebt}</h3>
                             <button onClick={() => { setViewingMemberDebt(null); setExpandedDebtDetail(null); }} className="p-2 bg-gray-100 rounded-full">✕</button>
                         </div>
-                        <p className="text-xs text-gray-400 mb-4 text-center">← {lang === 'zh' ? '往左滑可結清/取消結清帳款' : 'Swipe left to clear/unclear'}</p>
+                        <p className="text-xs text-gray-400 mb-4 text-center">{lang === 'zh' ? '← 左滑結清 · 右滑取消 →' : '← Swipe left to clear · right to undo →'}</p>
                         <div className="space-y-4">{(() => { const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>
                         {toPay.length > 0 && (<div><p className="text-xs font-bold text-red-500 mb-2 uppercase">{t.payables}</p>{toPay.map((d, i) => {
                             const isExpanded = expandedDebtDetail && expandedDebtDetail.type === 'pay' && expandedDebtDetail.person === d.to;
-                            const details = isExpanded ? getDetailBetweenTwo(viewingMemberDebt, d.to) : [];
+                            const details = getDetailBetweenTwo(viewingMemberDebt, d.to);
+                            const clearedAmount = getClearedAmountBetweenTwo(viewingMemberDebt, d.to);
+                            const remainingAmount = Math.round(d.amount + clearedAmount);
+                            const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.to);
                             return (<div key={i} className="mb-2">
-                                <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'pay', person: d.to })} className="flex justify-between items-center bg-red-500 p-3 rounded-xl cursor-pointer active:opacity-80">
-                                    <span className="font-bold text-white">{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span>
-                                    <span className="font-black text-white">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                <div className="flex justify-between items-center bg-red-500 p-3 rounded-xl">
+                                    <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'pay', person: d.to })} className="flex-1 cursor-pointer active:opacity-80">
+                                        <span className="font-bold text-white">{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {isAllCleared ? (
+                                            <span className="font-black text-white line-through opacity-60">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                        ) : clearedAmount !== 0 ? (
+                                            <div className="text-right">
+                                                <span className="font-black text-white">{currentCurrency.symbol}{remainingAmount.toLocaleString()}</span>
+                                                <span className="text-white/60 text-xs ml-1 line-through">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                            </div>
+                                        ) : (
+                                            <span className="font-black text-white">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                        )}
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); isAllCleared ? unclearAllBetweenTwo(viewingMemberDebt, d.to) : clearAllBetweenTwo(viewingMemberDebt, d.to); }}
+                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${isAllCleared ? 'bg-white/20 text-white' : 'bg-white text-red-500'}`}
+                                        >
+                                            {isAllCleared ? '↩' : '✓'}
+                                        </button>
+                                    </div>
                                 </div>
                                 {isExpanded && details.length > 0 && (
                                     <div className="bg-red-50 rounded-xl p-3 mt-1 space-y-1">
@@ -2620,15 +2726,15 @@
                                             return (
                                                 <SwipeToClear 
                                                     key={j} 
-                                                    onSwipe={() => toggleClearTransaction(item.id, viewingMemberDebt, d.to)}
+                                                    onClear={() => clearTransaction(item.id, viewingMemberDebt, d.to)}
+                                                    onUnclear={() => unclearTransaction(item.id, viewingMemberDebt, d.to)}
                                                     isCleared={isCleared}
                                                     clearText={t.mark_cleared}
-                                                    unclearText={t.undo_cleared}
                                                 >
                                                     <div className={`flex justify-between items-center text-sm p-2 rounded-lg ${isCleared ? 'cleared-item' : 'bg-white'}`}>
                                                         <div className="flex-1">
-                                                            <span className="font-bold text-gray-700">{item.date.slice(5)}</span>
-                                                            <span className="text-gray-600 ml-1">{formatDescription(item.description)}</span>
+                                                            <span className="font-bold debt-detail-date">{item.date.slice(5)}</span>
+                                                            <span className="debt-detail-desc ml-1">{formatDescription(item.description)}</span>
                                                             <span className="text-gray-400 text-xs ml-1">({item.payer}{t.other_paid})</span>
                                                             {isCleared && <span className="cleared-badge">{t.cleared}</span>}
                                                         </div>
@@ -2645,11 +2751,33 @@
                         })}</div>)}
                         {toReceive.length > 0 && (<div><p className="text-xs font-bold text-green-600 mb-2 uppercase">{t.receivables}</p>{toReceive.map((d, i) => {
                             const isExpanded = expandedDebtDetail && expandedDebtDetail.type === 'receive' && expandedDebtDetail.person === d.from;
-                            const details = isExpanded ? getDetailBetweenTwo(viewingMemberDebt, d.from) : [];
+                            const details = getDetailBetweenTwo(viewingMemberDebt, d.from);
+                            const clearedAmount = getClearedAmountBetweenTwo(viewingMemberDebt, d.from);
+                            const remainingAmount = Math.round(d.amount - clearedAmount);
+                            const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.from);
                             return (<div key={i} className="mb-2">
-                                <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'receive', person: d.from })} className="flex justify-between items-center bg-green-600 p-3 rounded-xl cursor-pointer active:opacity-80">
-                                    <span className="font-bold text-white">{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span>
-                                    <span className="font-black text-white">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                <div className="flex justify-between items-center bg-green-600 p-3 rounded-xl">
+                                    <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'receive', person: d.from })} className="flex-1 cursor-pointer active:opacity-80">
+                                        <span className="font-bold text-white">{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {isAllCleared ? (
+                                            <span className="font-black text-white line-through opacity-60">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                        ) : clearedAmount !== 0 ? (
+                                            <div className="text-right">
+                                                <span className="font-black text-white">{currentCurrency.symbol}{remainingAmount.toLocaleString()}</span>
+                                                <span className="text-white/60 text-xs ml-1 line-through">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                            </div>
+                                        ) : (
+                                            <span className="font-black text-white">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                        )}
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); isAllCleared ? unclearAllBetweenTwo(viewingMemberDebt, d.from) : clearAllBetweenTwo(viewingMemberDebt, d.from); }}
+                                            className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${isAllCleared ? 'bg-white/20 text-white' : 'bg-white text-green-600'}`}
+                                        >
+                                            {isAllCleared ? '↩' : '✓'}
+                                        </button>
+                                    </div>
                                 </div>
                                 {isExpanded && details.length > 0 && (
                                     <div className="bg-green-50 rounded-xl p-3 mt-1 space-y-1">
@@ -2658,15 +2786,15 @@
                                             return (
                                                 <SwipeToClear 
                                                     key={j} 
-                                                    onSwipe={() => toggleClearTransaction(item.id, viewingMemberDebt, d.from)}
+                                                    onClear={() => clearTransaction(item.id, viewingMemberDebt, d.from)}
+                                                    onUnclear={() => unclearTransaction(item.id, viewingMemberDebt, d.from)}
                                                     isCleared={isCleared}
                                                     clearText={t.mark_cleared}
-                                                    unclearText={t.undo_cleared}
                                                 >
                                                     <div className={`flex justify-between items-center text-sm p-2 rounded-lg ${isCleared ? 'cleared-item' : 'bg-white'}`}>
                                                         <div className="flex-1">
-                                                            <span className="font-bold text-gray-700">{item.date.slice(5)}</span>
-                                                            <span className="text-gray-600 ml-1">{formatDescription(item.description)}</span>
+                                                            <span className="font-bold debt-detail-date">{item.date.slice(5)}</span>
+                                                            <span className="debt-detail-desc ml-1">{formatDescription(item.description)}</span>
                                                             <span className="text-gray-400 text-xs ml-1">({item.payer}{t.other_paid})</span>
                                                             {isCleared && <span className="cleared-badge">{t.cleared}</span>}
                                                         </div>
@@ -2681,7 +2809,7 @@
                                 )}
                             </div>);
                         })}</div>)}
-                        {myExpense.expenseItems.length > 0 && (<div><p className="text-xs font-bold text-blue-600 mb-2 uppercase">{t.my_expense}</p><div className="bg-blue-50 rounded-xl p-3 space-y-2">{myExpense.expenseItems.map((item, i) => (<div key={i} className="flex justify-between items-center text-sm"><div className="flex-1"><span className="font-bold text-gray-700">{item.date.slice(5)}</span><span className="text-gray-600 ml-1">{formatDescription(item.description)}</span><span className="text-gray-400 text-xs ml-1">({item.payer === viewingMemberDebt ? t.self_paid : item.payer + t.other_paid})</span></div><span className="font-bold text-blue-600">{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span></div>))}<div className="border-t border-blue-200 pt-2 mt-2 flex justify-between items-center"><span className="font-bold text-gray-700">{t.my_expense_total}</span><span className="font-black text-blue-700">{currentCurrency.symbol}{Math.round(myExpense.totalExpense).toLocaleString()}</span></div></div></div>)}
+                        {myExpense.expenseItems.length > 0 && (<div><p className="text-xs font-bold text-blue-600 mb-2 uppercase">{t.my_expense}</p><div className="bg-blue-50 rounded-xl p-3 space-y-2">{myExpense.expenseItems.map((item, i) => (<div key={i} className="flex justify-between items-center text-sm"><div className="flex-1"><span className="font-bold debt-detail-date">{item.date.slice(5)}</span><span className="debt-detail-desc ml-1">{formatDescription(item.description)}</span><span className="text-gray-400 text-xs ml-1">({item.payer === viewingMemberDebt ? t.self_paid : item.payer + t.other_paid})</span></div><span className="font-bold text-blue-600">{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span></div>))}<div className="border-t border-blue-200 pt-2 mt-2 flex justify-between items-center"><span className="font-bold text-gray-700">{t.my_expense_total}</span><span className="font-black text-blue-700">{currentCurrency.symbol}{Math.round(myExpense.totalExpense).toLocaleString()}</span></div></div></div>)}
                         {toPay.length === 0 && toReceive.length === 0 && myExpense.expenseItems.length === 0 && (<div className="text-center text-gray-400 py-4">{t.settled}</div>)}
                     </>); })()}</div></div></div>)}
 
