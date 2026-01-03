@@ -1770,42 +1770,20 @@
                         let savedCount = 0;
 
                         for (const tx of data.transactions) {
-                            let payload;
-
-                            if (tx.splitType === 'custom' && tx.customItems) {
-                                // AB split / custom split transaction
-                                const involvedMembers = Object.keys(tx.customItems);
-                                payload = {
-                                    date: tx.date,
-                                    description: tx.description,
-                                    amount: tx.amount,
-                                    currency: currentBook.currency,
-                                    exchangeRate: activeRate,
-                                    amountTWD: Math.round(tx.amount * activeRate),
-                                    txType: tx.txType || 'expense',
-                                    payer: tx.payer || (isPersonalBook ? currentBook.owner : bookMembers[0]),
-                                    involved: involvedMembers.length > 0 ? involvedMembers : bookMembers,
-                                    splitType: 'custom',
-                                    customItems: tx.customItems,
-                                    createdAt: firebase.database.ServerValue.TIMESTAMP
-                                };
-                            } else {
-                                // Standard equal split transaction
-                                payload = {
-                                    date: tx.date,
-                                    description: tx.description,
-                                    amount: tx.amount,
-                                    currency: currentBook.currency,
-                                    exchangeRate: activeRate,
-                                    amountTWD: Math.round(tx.amount * activeRate),
-                                    category: tx.category,
-                                    txType: tx.txType,
-                                    payer: isPersonalBook ? currentBook.owner : bookMembers[0],
-                                    involved: isPersonalBook ? [currentBook.owner] : bookMembers,
-                                    splitType: 'equal',
-                                    createdAt: firebase.database.ServerValue.TIMESTAMP
-                                };
-                            }
+                            const payload = {
+                                date: tx.date,
+                                description: tx.description,
+                                amount: tx.amount,
+                                currency: currentBook.currency,
+                                exchangeRate: activeRate,
+                                amountTWD: Math.round(tx.amount * activeRate),
+                                category: tx.category,
+                                txType: tx.txType,
+                                payer: isPersonalBook ? currentBook.owner : bookMembers[0],
+                                involved: isPersonalBook ? [currentBook.owner] : bookMembers,
+                                splitType: 'equal',
+                                createdAt: firebase.database.ServerValue.TIMESTAMP
+                            };
                             await db.ref(path).push(payload);
                             savedCount++;
                         }
