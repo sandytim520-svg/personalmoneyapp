@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -17,91 +18,409 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #F3F4F6; -webkit-tap-highlight-color: transparent; }
-        .modal-enter { animation: modalUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-        .slide-in-left { animation: slideInLeft 0.3s ease-out; }
-        @keyframes modalUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes slideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-        .btn-press:active { transform: scale(0.95); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #F3F4F6;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        .modal-enter {
+            animation: modalUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slide-in-left {
+            animation: slideInLeft 0.3s ease-out;
+        }
+
+        @keyframes modalUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
         /* Swipe to delete styles */
-        .swipe-container { position: relative; overflow: hidden; }
-        .swipe-content { transition: transform 0.3s ease; }
-        .swipe-content.swiping { transition: none; }
-        .swipe-delete-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #EF4444; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 1rem; }
+        .swipe-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .swipe-content {
+            transition: transform 0.3s ease;
+        }
+
+        .swipe-content.swiping {
+            transition: none;
+        }
+
+        .swipe-delete-bg {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 100px;
+            background: #EF4444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            border-radius: 1rem;
+        }
+
         /* Swipe to clear styles */
-        .swipe-clear-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #10B981; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 0.75rem; }
-        .swipe-unclear-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 100px; background: #F59E0B; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 0.75rem; }
-        .swipe-unclear-bg-left { position: absolute; left: 0; top: 0; bottom: 0; width: 100px; background: #F59E0B; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; border-radius: 0.75rem; }
-        .cleared-item { opacity: 0.7; background: linear-gradient(90deg, #D1FAE5 0%, #ECFDF5 100%) !important; }
-        .cleared-badge { background: #10B981; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 6px; }
+        .swipe-clear-bg {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 100px;
+            background: #10B981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            border-radius: 0.75rem;
+        }
+
+        .swipe-unclear-bg {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 100px;
+            background: #F59E0B;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            border-radius: 0.75rem;
+        }
+
+        .swipe-unclear-bg-left {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 100px;
+            background: #F59E0B;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            border-radius: 0.75rem;
+        }
+
+        .cleared-item {
+            opacity: 0.7;
+            background: linear-gradient(90deg, #D1FAE5 0%, #ECFDF5 100%) !important;
+        }
+
+        .cleared-badge {
+            background: #10B981;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
         /* Dark Mode Styles */
-        .dark { background-color: #000000 !important; color: #F9FAFB !important; }
-        .dark .bg-white { background-color: #1a1a1a !important; }
-        .dark .bg-gray-50 { background-color: #2a2a2a !important; }
-        .dark .bg-gray-100 { background-color: #1a1a1a !important; }
-        .dark .bg-green-50 { background-color: #064e3b !important; }
-        .dark .bg-red-50 { background-color: #7f1d1d !important; }
-        .dark .bg-blue-50 { background-color: #1e3a5f !important; }
-        .dark .bg-purple-50 { background-color: #4c1d95 !important; }
-        .dark .bg-purple-100 { background-color: #6B21A8 !important; }
-        .dark .text-purple-600 { color: #E9D5FF !important; }
-        .dark .text-gray-800, .dark .text-gray-700, .dark .text-gray-600 { color: #F9FAFB !important; }
-        .dark .text-gray-500, .dark .text-gray-400 { color: #9CA3AF !important; }
-        .dark .text-black { color: #F9FAFB !important; }
-        .dark .text-green-600, .dark .text-green-700 { color: #4ADE80 !important; }
-        .dark .text-red-500, .dark .text-red-600 { color: #F87171 !important; }
-        .dark .text-blue-600, .dark .text-blue-700 { color: #60A5FA !important; }
-        .dark .text-orange-600 { color: #FB923C !important; }
-        .dark .border-gray-200, .dark .border-gray-100 { border-color: #374151 !important; }
-        .dark .border-black { border-color: #60A5FA !important; }
-        .dark .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important; }
-        .dark input, .dark select { background-color: #2a2a2a !important; color: #F9FAFB !important; border-color: #374151 !important; }
-        .dark .font-bold { color: inherit; }
-        .dark .slide-in-left { background-color: #1a1a1a !important; }
-        .dark .border-t { border-color: #374151 !important; }
-        .dark .hover\:bg-gray-100:hover { background-color: #374151 !important; }
-        .dark .hover\:bg-gray-200:hover { background-color: #4B5563 !important; }
-        .dark .border-2.border-black { border-color: #60A5FA !important; }
-        .dark .border-2.border-gray-100 { border-color: #374151 !important; }
-        .dark .border-transparent { border-color: transparent !important; }
-        .dark span { color: inherit; }
-        .dark button span { color: inherit; }
-        .dark .rounded-xl span { color: inherit; }
-        .dark .p-3 span:not(.text-2xl):not(.text-3xl) { color: #F9FAFB; }
+        .dark {
+            background-color: #000000 !important;
+            color: #F9FAFB !important;
+        }
+
+        .dark .bg-white {
+            background-color: #1a1a1a !important;
+        }
+
+        .dark .bg-gray-50 {
+            background-color: #2a2a2a !important;
+        }
+
+        .dark .bg-gray-100 {
+            background-color: #1a1a1a !important;
+        }
+
+        .dark .bg-green-50 {
+            background-color: #064e3b !important;
+        }
+
+        .dark .bg-red-50 {
+            background-color: #7f1d1d !important;
+        }
+
+        .dark .bg-blue-50 {
+            background-color: #1e3a5f !important;
+        }
+
+        .dark .bg-purple-50 {
+            background-color: #4c1d95 !important;
+        }
+
+        .dark .bg-purple-100 {
+            background-color: #6B21A8 !important;
+        }
+
+        .dark .text-purple-600 {
+            color: #E9D5FF !important;
+        }
+
+        .dark .text-gray-800,
+        .dark .text-gray-700,
+        .dark .text-gray-600 {
+            color: #F9FAFB !important;
+        }
+
+        .dark .text-gray-500,
+        .dark .text-gray-400 {
+            color: #9CA3AF !important;
+        }
+
+        .dark .text-black {
+            color: #F9FAFB !important;
+        }
+
+        .dark .text-green-600,
+        .dark .text-green-700 {
+            color: #4ADE80 !important;
+        }
+
+        .dark .text-red-500,
+        .dark .text-red-600 {
+            color: #F87171 !important;
+        }
+
+        .dark .text-blue-600,
+        .dark .text-blue-700 {
+            color: #60A5FA !important;
+        }
+
+        .dark .text-orange-600 {
+            color: #FB923C !important;
+        }
+
+        .dark .border-gray-200,
+        .dark .border-gray-100 {
+            border-color: #374151 !important;
+        }
+
+        .dark .border-black {
+            border-color: #60A5FA !important;
+        }
+
+        .dark .shadow-sm {
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .dark input,
+        .dark select {
+            background-color: #2a2a2a !important;
+            color: #F9FAFB !important;
+            border-color: #374151 !important;
+        }
+
+        .dark .font-bold {
+            color: inherit;
+        }
+
+        .dark .slide-in-left {
+            background-color: #1a1a1a !important;
+        }
+
+        .dark .border-t {
+            border-color: #374151 !important;
+        }
+
+        .dark .hover\:bg-gray-100:hover {
+            background-color: #374151 !important;
+        }
+
+        .dark .hover\:bg-gray-200:hover {
+            background-color: #4B5563 !important;
+        }
+
+        .dark .border-2.border-black {
+            border-color: #60A5FA !important;
+        }
+
+        .dark .border-2.border-gray-100 {
+            border-color: #374151 !important;
+        }
+
+        .dark .border-transparent {
+            border-color: transparent !important;
+        }
+
+        .dark span {
+            color: inherit;
+        }
+
+        .dark button span {
+            color: inherit;
+        }
+
+        .dark .rounded-xl span {
+            color: inherit;
+        }
+
+        .dark .p-3 span:not(.text-2xl):not(.text-3xl) {
+            color: #F9FAFB;
+        }
+
         /* Dark mode button overrides */
-        .dark .settle-btn { background-color: #6B7280 !important; color: #F9FAFB !important; }
-        .dark .fab-btn { background-color: #F5F5DC !important; color: #1a1a1a !important; }
-        .dark .custom-total-amount { color: #9333EA !important; }
-        .dark .filter-header-bar { background-color: #1E3A5F !important; }
-        .dark .text-purple-800 { color: #A855F7 !important; }
-        .dark .text-purple-700 { color: #A855F7 !important; }
-        .dark .bg-green-100 { background-color: #065F46 !important; }
-        .dark .bg-red-100 { background-color: #991B1B !important; }
-        .dark .bg-blue-100 { background-color: #1E40AF !important; }
-        .dark .border-green-500 { border-color: #10B981 !important; }
-        .dark .border-purple-500 { border-color: #8B5CF6 !important; }
-        .dark .border-purple-200 { border-color: #7C3AED !important; }
-        .dark .bg-green-50.text-green-700 span { color: #4ADE80 !important; }
-        .dark .border-gray-50 { border-color: #374151 !important; }
-        .dark .bg-indigo-50 { background-color: #312E81 !important; }
-        .dark .text-indigo-600 { color: #A5B4FC !important; }
-        .dark .border-2.border-black .text-gray-800 { color: #1a1a1a !important; }
-        .dark .ring-2.ring-black { --tw-ring-color: #60A5FA !important; }
-        .dark .selected-book { background-color: #F9FAFB !important; border-color: #F9FAFB !important; }
-        .dark .selected-book-text { color: #1a1a1a !important; }
-        .dark .selected-book-subtext { color: #4B5563 !important; }
+        .dark .settle-btn {
+            background-color: #6B7280 !important;
+            color: #F9FAFB !important;
+        }
+
+        .dark .fab-btn {
+            background-color: #F5F5DC !important;
+            color: #1a1a1a !important;
+        }
+
+        .dark .custom-total-amount {
+            color: #9333EA !important;
+        }
+
+        .dark .filter-header-bar {
+            background-color: #1E3A5F !important;
+        }
+
+        .dark .text-purple-800 {
+            color: #A855F7 !important;
+        }
+
+        .dark .text-purple-700 {
+            color: #A855F7 !important;
+        }
+
+        .dark .bg-green-100 {
+            background-color: #065F46 !important;
+        }
+
+        .dark .bg-red-100 {
+            background-color: #991B1B !important;
+        }
+
+        .dark .bg-blue-100 {
+            background-color: #1E40AF !important;
+        }
+
+        .dark .border-green-500 {
+            border-color: #10B981 !important;
+        }
+
+        .dark .border-purple-500 {
+            border-color: #8B5CF6 !important;
+        }
+
+        .dark .border-purple-200 {
+            border-color: #7C3AED !important;
+        }
+
+        .dark .bg-green-50.text-green-700 span {
+            color: #4ADE80 !important;
+        }
+
+        .dark .border-gray-50 {
+            border-color: #374151 !important;
+        }
+
+        .dark .bg-indigo-50 {
+            background-color: #312E81 !important;
+        }
+
+        .dark .text-indigo-600 {
+            color: #A5B4FC !important;
+        }
+
+        .dark .border-2.border-black .text-gray-800 {
+            color: #1a1a1a !important;
+        }
+
+        .dark .ring-2.ring-black {
+            --tw-ring-color: #60A5FA !important;
+        }
+
+        .dark .selected-book {
+            background-color: #F9FAFB !important;
+            border-color: #F9FAFB !important;
+        }
+
+        .dark .selected-book-text {
+            color: #1a1a1a !important;
+        }
+
+        .dark .selected-book-subtext {
+            color: #4B5563 !important;
+        }
+
         /* 深色模式下共同帳本明細的日期和項目改為深灰色 */
-        .debt-detail-date { color: #374151; }
-        .debt-detail-desc { color: #4B5563; }
-        .dark .debt-detail-date { color: #9CA3AF !important; }
-        .dark .debt-detail-desc { color: #9CA3AF !important; }
-        .dark .cleared-item { background: linear-gradient(90deg, #064e3b 0%, #065F46 100%) !important; }
+        .debt-detail-date {
+            color: #374151;
+        }
+
+        .debt-detail-desc {
+            color: #4B5563;
+        }
+
+        .dark .debt-detail-date {
+            color: #9CA3AF !important;
+        }
+
+        .dark .debt-detail-desc {
+            color: #9CA3AF !important;
+        }
+
+        .dark .cleared-item {
+            background: linear-gradient(90deg, #064e3b 0%, #065F46 100%) !important;
+        }
     </style>
 </head>
+
 <body>
     <div id="root"></div>
     <script type="text/babel">
@@ -249,7 +568,7 @@
             { code: 'HKD', symbol: 'HK$', flag: '🇭🇰', rate: 4.1, name_zh: '港幣', name_en: 'Hong Kong Dollar' },
             { code: 'THB', symbol: '฿', flag: '🇹🇭', rate: 0.9, name_zh: '泰銖', name_en: 'Thai Baht' },
             { code: 'GBP', symbol: '£', flag: '🇬🇧', rate: 41.0, name_zh: '英鎊', name_en: 'British Pound' },
-            { code: 'AUD', symbol: 'AUD$', flag: '🇦🇺', rate: 21.5, name_zh: '澳幣', name_en: 'Australian Dollar' },
+            { code: 'AUD', symbol: '$', flag: '🇦🇺', rate: 21.5, name_zh: '澳幣', name_en: 'Australian Dollar' },
             { code: 'SGD', symbol: 'S$', flag: '🇸🇬', rate: 24.0, name_zh: '新幣', name_en: 'Singapore Dollar' },
             { code: 'VND', symbol: '₫', flag: '🇻🇳', rate: 0.0013, name_zh: '越南盾', name_en: 'Vietnamese Dong' },
             { code: 'MYR', symbol: 'RM', flag: '🇲🇾', rate: 7.0, name_zh: '馬幣', name_en: 'Malaysian Ringgit' },
@@ -315,7 +634,7 @@
                     <div className="swipe-delete-bg">
                         <Icons.Trash />
                     </div>
-                    <div 
+                    <div
                         className={`swipe-content ${isSwiping ? 'swiping' : ''}`}
                         style={{ transform: `translateX(-${currentX}px)` }}
                         onTouchStart={handleTouchStart}
@@ -374,7 +693,7 @@
                     {isCleared && currentX < -20 && <div className="swipe-unclear-bg-left">
                         <span className="text-xs font-bold">取消</span>
                     </div>}
-                    <div 
+                    <div
                         className={`swipe-content ${isSwiping ? 'swiping' : ''}`}
                         style={{ transform: `translateX(${isCleared ? -currentX : -currentX}px)` }}
                         onTouchStart={handleTouchStart}
@@ -528,7 +847,7 @@
             const bookMembers = validBookMembers.length > 0 ? validBookMembers : Object.keys(globalMembers).slice(0, 2);
             const currentCurrency = CURRENCIES.find(c => c.code === currentBook.currency) || CURRENCIES[0];
             const activeRate = currentBook.customRate || currentCurrency.rate || 1;
-            
+
             // Combine default and custom categories
             const allCategories = React.useMemo(() => {
                 // Merge CATEGORIES with customCategories, allowing customCategories to override defaults
@@ -711,6 +1030,17 @@
 
             useEffect(() => { if (!sortNewestFirst && bottomRef.current && !loading) bottomRef.current.scrollIntoView({ behavior: 'smooth' }); }, [transactions, loading, sortNewestFirst]);
 
+            // 管理 modal-open class 防止背景滾動
+            useEffect(() => {
+                const hasModal = isMenuOpen || isMenuSettingsOpen || isAddBookOpen || isMemberManagerOpen || isBookMemberSettingsOpen || isModalOpen || isRateModalOpen || isHistoryOpen || isSettingsOpen || isRecurringListOpen || isRecurringFormOpen || isCategoryEditOpen || isExpenseDetailOpen || isIncomeDetailOpen || isScanOpen || isFilterOpen || isDeletedBooksOpen || viewingSettlement || viewingMemberDebt || viewingFilteredTx;
+                if (hasModal) {
+                    document.body.classList.add('modal-open');
+                } else {
+                    document.body.classList.remove('modal-open');
+                }
+                return () => document.body.classList.remove('modal-open');
+            }, [isMenuOpen, isMenuSettingsOpen, isAddBookOpen, isMemberManagerOpen, isBookMemberSettingsOpen, isModalOpen, isRateModalOpen, isHistoryOpen, isSettingsOpen, isRecurringListOpen, isRecurringFormOpen, isCategoryEditOpen, isExpenseDetailOpen, isIncomeDetailOpen, isScanOpen, isFilterOpen, isDeletedBooksOpen, viewingSettlement, viewingMemberDebt, viewingFilteredTx]);
+
             const getMemberAmountInTx = (tx, memberName) => {
                 if (tx.splitType === 'custom' && tx.customAmounts) return parseFloat(tx.customAmounts[memberName]) || 0;
                 else if (tx.involved && tx.involved.includes(memberName)) return tx.amount / tx.involved.length;
@@ -722,34 +1052,34 @@
                 if (isPersonalBook) {
                     const hasPersonalFilters = activeFilters.category || activeFilters.txType || (activeFilters.dateType && activeFilters.dateType !== 'none');
                     if (!hasPersonalFilters) return [];
-                    
+
                     let result = [...transactions];
-                    
+
                     // 日期篩選
                     if (activeFilters.dateType === 'range' && activeFilters.startDate && activeFilters.endDate) {
-                        result = result.filter(tx => { 
-                            const txDate = new Date(tx.date); 
-                            const start = new Date(activeFilters.startDate); 
-                            const end = new Date(activeFilters.endDate); 
-                            return txDate >= start && txDate <= end; 
+                        result = result.filter(tx => {
+                            const txDate = new Date(tx.date);
+                            const start = new Date(activeFilters.startDate);
+                            const end = new Date(activeFilters.endDate);
+                            return txDate >= start && txDate <= end;
                         });
                     } else if (activeFilters.dateType === 'single' && activeFilters.singleDate) {
                         result = result.filter(tx => tx.date === activeFilters.singleDate);
                     }
-                    
+
                     // 類別篩選
                     if (activeFilters.category) {
                         result = result.filter(tx => tx.category === activeFilters.category);
                     }
-                    
+
                     // 類型篩選 (收入/支出)
                     if (activeFilters.txType) {
                         result = result.filter(tx => tx.txType === activeFilters.txType);
                     }
-                    
+
                     return result;
                 }
-                
+
                 // 團體帳本篩選邏輯 (原有)
                 if (!activeFilters.payer && !activeFilters.payee) return [];
                 let result = [...transactions];
@@ -763,7 +1093,7 @@
                 return result.map(tx => { const payeeAmount = activeFilters.payee ? getMemberAmountInTx(tx, activeFilters.payee) : tx.amount; return { ...tx, paidForAmount: payeeAmount, payee: activeFilters.payee || '(全部)' }; });
             }, [transactions, activeFilters, isPersonalBook]);
 
-            const hasActiveFilters = isPersonalBook 
+            const hasActiveFilters = isPersonalBook
                 ? (activeFilters.category || activeFilters.txType || (activeFilters.dateType && activeFilters.dateType !== 'none'))
                 : (activeFilters.payer || activeFilters.payee || (activeFilters.dateType && activeFilters.dateType !== 'none'));
 
@@ -845,15 +1175,15 @@
                 const today = new Date().toISOString().split('T')[0];
                 const txPath = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
                 const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
-                
+
                 recurringItems.forEach(item => {
                     if (!item.isActive) return;
                     if (item.endDate && item.endDate < today) return;
                     if (item.startDate > today) return;
-                    
+
                     let shouldGenerate = false;
                     let nextDate = item.lastGenerated ? new Date(item.lastGenerated) : new Date(item.startDate);
-                    
+
                     if (!item.lastGenerated) {
                         shouldGenerate = true;
                         nextDate = new Date(item.startDate);
@@ -862,10 +1192,10 @@
                         if (item.intervalType === 'day') nextDate.setDate(nextDate.getDate() + item.intervalValue);
                         else if (item.intervalType === 'month') nextDate.setMonth(nextDate.getMonth() + item.intervalValue);
                         else if (item.intervalType === 'year') nextDate.setFullYear(nextDate.getFullYear() + item.intervalValue);
-                        
+
                         if (nextDate <= new Date(today)) shouldGenerate = true;
                     }
-                    
+
                     if (shouldGenerate) {
                         const txData = {
                             date: nextDate.toISOString().split('T')[0],
@@ -1045,41 +1375,41 @@
             const handleCustomItemNameChange = (member, value) => { setFormData({ ...formData, customItemNames: { ...formData.customItemNames, [member]: value } }); };
             const handleCustomAmountChange = (member, value) => { setFormData({ ...formData, customAmounts: { ...formData.customAmounts, [member]: value } }); };
             const calculateCustomTotal = () => Object.values(formData.customAmounts).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
-            
+
             // 個人帳本篩選
-            const applyFilters = () => { 
+            const applyFilters = () => {
                 if (isPersonalBook) {
-                    setActiveFilters({ 
-                        dateType: filterDateType, 
-                        startDate: filterStartDate, 
-                        endDate: filterEndDate, 
-                        singleDate: filterSingleDate, 
+                    setActiveFilters({
+                        dateType: filterDateType,
+                        startDate: filterStartDate,
+                        endDate: filterEndDate,
+                        singleDate: filterSingleDate,
                         category: filterCategory,
                         txType: filterType
-                    }); 
+                    });
                 } else {
-                    setActiveFilters({ 
-                        dateType: filterDateType, 
-                        startDate: filterStartDate, 
-                        endDate: filterEndDate, 
-                        singleDate: filterSingleDate, 
-                        payer: filterPayer, 
-                        payee: filterPayee 
-                    }); 
+                    setActiveFilters({
+                        dateType: filterDateType,
+                        startDate: filterStartDate,
+                        endDate: filterEndDate,
+                        singleDate: filterSingleDate,
+                        payer: filterPayer,
+                        payee: filterPayee
+                    });
                 }
-                setIsFilterOpen(false); 
+                setIsFilterOpen(false);
             };
-            const clearFilters = () => { 
-                setFilterDateType('none'); 
-                setFilterStartDate(''); 
-                setFilterEndDate(''); 
-                setFilterSingleDate(''); 
-                setFilterPayer(''); 
-                setFilterPayee(''); 
+            const clearFilters = () => {
+                setFilterDateType('none');
+                setFilterStartDate('');
+                setFilterEndDate('');
+                setFilterSingleDate('');
+                setFilterPayer('');
+                setFilterPayee('');
                 setFilterCategory('');
                 setFilterType('');
-                setActiveFilters({}); 
-                setIsFilterOpen(false); 
+                setActiveFilters({});
+                setIsFilterOpen(false);
             };
 
             // 結清/取消結清交易
@@ -1087,7 +1417,7 @@
                 const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
                 const clearKey = `${txId}_${me}_${other}`;
                 const reverseKey = `${txId}_${other}_${me}`;
-                
+
                 if (clearedTransactions[clearKey] || clearedTransactions[reverseKey]) {
                     // 取消結清
                     db.ref(clearedPath + '/' + clearKey).remove();
@@ -1103,7 +1433,7 @@
                     db.ref(clearedPath + '/' + reverseKey).set(clearData);
                 }
             };
-            
+
             // 結清某筆交易
             const clearTransaction = (txId, me, other) => {
                 const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
@@ -1117,7 +1447,7 @@
                 db.ref(clearedPath + '/' + clearKey).set(clearData);
                 db.ref(clearedPath + '/' + reverseKey).set(clearData);
             };
-            
+
             // 取消結清某筆交易
             const unclearTransaction = (txId, me, other) => {
                 const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
@@ -1126,7 +1456,7 @@
                 db.ref(clearedPath + '/' + clearKey).remove();
                 db.ref(clearedPath + '/' + reverseKey).remove();
             };
-            
+
             // 整筆結清（結清兩人之間所有未結清的交易）
             const clearAllBetweenTwo = (me, other) => {
                 const details = getDetailBetweenTwo(me, other);
@@ -1136,7 +1466,7 @@
                     }
                 });
             };
-            
+
             // 取消整筆結清
             const unclearAllBetweenTwo = (me, other) => {
                 const details = getDetailBetweenTwo(me, other);
@@ -1146,14 +1476,14 @@
                     }
                 });
             };
-            
+
             // 檢查兩人之間是否全部已結清
             const isAllClearedBetweenTwo = (me, other) => {
                 const details = getDetailBetweenTwo(me, other);
                 if (details.length === 0) return false;
                 return details.every(item => isTransactionCleared(item.id, me, other));
             };
-            
+
             // 計算兩人之間已結清的金額
             const getClearedAmountBetweenTwo = (me, other) => {
                 const details = getDetailBetweenTwo(me, other);
@@ -1180,13 +1510,13 @@
             const handleIconUpload = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                
+
                 // 檢查檔案大小 (最大 100KB)
                 if (file.size > 100 * 1024) {
                     alert('圖片檔案過大，請選擇小於 100KB 的圖片');
                     return;
                 }
-                
+
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
@@ -1270,7 +1600,7 @@
 
             const parseDate = (dateStr) => {
                 const months = { 'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12' };
-                
+
                 // Format: Sat 15 Nov 2025 or Mon 01 Dec 2025
                 const dayMonthYearMatch = dateStr.toLowerCase().match(/\w+\s+(\d{1,2})\s+(\w{3})\s+(\d{4})/);
                 if (dayMonthYearMatch) {
@@ -1278,7 +1608,7 @@
                     const m = months[mon] || '01';
                     return `${y}/${m.padStart(2, '0')}/${d.padStart(2, '0')}`;
                 }
-                
+
                 // Format: 15/11/2025 or 15-11-2025
                 let match = dateStr.match(/(\d{1,2})\s*[\/\-\.]\s*(\d{1,2})\s*[\/\-\.]\s*(\d{2,4})/);
                 if (match) {
@@ -1286,14 +1616,14 @@
                     if (y.length === 2) y = '20' + y;
                     return `${y}/${m.padStart(2, '0')}/${d.padStart(2, '0')}`;
                 }
-                
+
                 // Format: 2025/11/15 or 2025-11-15
                 match = dateStr.match(/(\d{4})\s*[\/\-\.]\s*(\d{1,2})\s*[\/\-\.]\s*(\d{1,2})/);
                 if (match) {
                     let [, y, m, d] = match;
                     return `${y}/${m.padStart(2, '0')}/${d.padStart(2, '0')}`;
                 }
-                
+
                 // Format: Nov 15, 2025
                 const monthMatch = dateStr.toLowerCase().match(/(\w{3})\s+(\d{1,2})[\s,]+(\d{4})/);
                 if (monthMatch) {
@@ -1301,18 +1631,18 @@
                     const m = months[mon] || '01';
                     return `${y}/${m.padStart(2, '0')}/${d.padStart(2, '0')}`;
                 }
-                
+
                 return new Date().toISOString().split('T')[0].replace(/-/g, '/');
             };
 
             const detectCategory = (text, categoryLine = '') => {
                 const lowerText = (text + ' ' + categoryLine).toLowerCase();
-                
+
                 // Custom merchant rules (highest priority)
                 if (/tangerpay/i.test(lowerText)) return 'laundry';
                 if (/qut|queensland university/i.test(lowerText)) return 'education';
                 if (/iglu/i.test(lowerText)) return 'accommodation';
-                
+
                 // Direct category name matching from bank apps
                 if (/entertainment/i.test(lowerText)) return 'entertainment';
                 if (/transfers?\s*[&and]*\s*payments?/i.test(lowerText)) return 'transfers';
@@ -1324,7 +1654,7 @@
                 if (/eating\s*out|takeaway|food|dining|restaurant/i.test(lowerText)) return 'food';
                 if (/education|university|school|college/i.test(lowerText)) return 'education';
                 if (/uncategorised|uncategorized|other/i.test(lowerText)) return 'other';
-                
+
                 // First check exact category name matches (case insensitive) - use allCategories
                 for (const cat of [...CATEGORIES, ...customCategories]) {
                     if (lowerText.includes(cat.name_en.toLowerCase()) || lowerText.includes(cat.name_zh.toLowerCase()) || lowerText.includes(cat.id.toLowerCase())) {
@@ -1352,24 +1682,24 @@
                 if (!imageData) return;
                 setIsScanning(true);
                 setScanMode('processing');
-                
+
                 try {
                     console.log('Image data type:', typeof imageData);
                     console.log('Image data starts with:', imageData.substring(0, 50));
                     console.log('Image data length:', imageData.length);
-                    
+
                     // Get the current origin for the API URL
                     const apiUrl = window.location.origin + '/api/analyze-image';
                     console.log('Calling API:', apiUrl);
-                    
+
                     const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image: imageData })
                     });
-                    
+
                     console.log('Response status:', response.status);
-                    
+
                     if (!response.ok) {
                         const errorText = await response.text();
                         console.error('HTTP Error:', response.status, errorText);
@@ -1379,10 +1709,10 @@
                         setIsScanOpen(false);
                         return;
                     }
-                    
+
                     const data = await response.json();
                     console.log('AI Analysis Result:', data);
-                    
+
                     if (data.error) {
                         console.error('API Error:', data.error, data.details);
                         alert(`❌ AI API 錯誤: ${data.error}\n\n${data.details || ''}\n\n請確認:\n1. GEMINI_API_KEY 已在 Cloudflare 設定\n2. API Key 有效`);
@@ -1391,13 +1721,13 @@
                         setIsScanOpen(false);
                         return;
                     }
-                    
+
                     if (data.success && data.transactions && data.transactions.length > 0) {
                         console.log(`✅ AI (${data.source || 'unknown'}) found ${data.count} transactions`);
-                        
+
                         const path = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
                         let savedCount = 0;
-                        
+
                         for (const tx of data.transactions) {
                             const payload = {
                                 date: tx.date,
@@ -1416,7 +1746,7 @@
                             await db.ref(path).push(payload);
                             savedCount++;
                         }
-                        
+
                         setIsScanOpen(false);
                         setScanMode(null);
                         setCapturedImage(null);
@@ -1438,25 +1768,25 @@
                     setIsScanOpen(false);
                 }
             };
-            
+
             // Fallback OCR function using Tesseract.js - also directly saves to DB
             const processImageWithOCR = async (imageData) => {
                 try {
                     const result = await Tesseract.recognize(imageData, 'eng+chi_tra', { logger: m => console.log(m) });
                     const text = result.data.text;
                     console.log('OCR Result:', text);
-                    
+
                     const lines = text.split('\n').filter(l => l.trim());
                     const results = [];
                     const currentYear = new Date().getFullYear();
                     let currentDate = new Date().toISOString().split('T')[0];
-                    
+
                     const months = { 'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06', 'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12' };
-                    
+
                     for (let i = 0; i < lines.length; i++) {
                         const line = lines[i].trim();
                         if (!line) continue;
-                        
+
                         const dateMatch = line.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
                         if (dateMatch) {
                             const day = dateMatch[2].padStart(2, '0');
@@ -1466,17 +1796,17 @@
                             currentDate = `${year}-${month}-${day}`;
                             continue;
                         }
-                        
+
                         const amountMatch = line.match(/(-?)\$\s*([\d,]+\.?\d*)/);
                         if (amountMatch) {
                             const isNegative = amountMatch[1] === '-';
                             const rawAmount = amountMatch[2].replace(/,/g, '');
                             const amount = parseFloat(rawAmount);
-                            
+
                             if (!isNaN(amount) && amount > 0) {
                                 let description = '';
                                 let categoryLine = '';
-                                
+
                                 for (let j = i - 1; j >= 0 && j >= i - 3; j--) {
                                     const prevLine = lines[j].trim();
                                     if (prevLine.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d/i)) break;
@@ -1484,19 +1814,19 @@
                                     if (prevLine.match(/^\d+\s+days?\s+ago$/i) || prevLine.match(/^Yesterday$/i) || prevLine.match(/^Today$/i)) continue;
                                     if (prevLine.length > 2) { description = prevLine; break; }
                                 }
-                                
+
                                 if (!description) {
                                     const beforeAmount = line.replace(/(-?)\$\s*[\d,]+\.?\d*/, '').trim();
                                     if (beforeAmount.length > 2) description = beforeAmount;
                                 }
-                                
+
                                 if (i + 1 < lines.length) {
                                     const nextLine = lines[i + 1].trim();
                                     if (!nextLine.match(/\$[\d,]+\.?\d*/) && !nextLine.match(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d/i) && !nextLine.match(/^\d+\s+days?\s+ago$/i) && nextLine.length > 2 && nextLine.length < 50) {
                                         categoryLine = nextLine;
                                     }
                                 }
-                                
+
                                 results.push({
                                     date: currentDate,
                                     description: description || categoryLine || 'Item',
@@ -1507,19 +1837,19 @@
                             }
                         }
                     }
-                    
+
                     // Remove duplicates
                     const uniqueResults = results.filter((item, index, self) =>
                         index === self.findIndex(t => t.date === item.date && t.description === item.description && t.amount === item.amount)
                     );
-                    
+
                     if (uniqueResults.length === 0) {
                         alert(t.no_valid_records || '未找到有效的交易記錄');
                     } else {
                         // Directly save to Firebase
                         const path = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
                         let savedCount = 0;
-                        
+
                         for (const tx of uniqueResults) {
                             const payload = {
                                 date: tx.date,
@@ -1538,10 +1868,10 @@
                             await db.ref(path).push(payload);
                             savedCount++;
                         }
-                        
+
                         alert(`✅ ${t.import_success || '成功匯入'} ${savedCount} ${t.records || '筆交易記錄'}`);
                     }
-                    
+
                     setIsScanOpen(false);
                     setScanMode(null);
                     setCapturedImage(null);
@@ -1665,7 +1995,7 @@
                     const isPayer = tx.payer === me || tx.payer === other;
                     const isInvolved = involved.includes(me) && involved.includes(other);
                     if (!isPayer && !isInvolved) return;
-                    
+
                     // 計算我在這筆交易中的份額
                     let myShare = 0;
                     if (tx.splitType === 'custom' && tx.customAmounts) {
@@ -1673,7 +2003,7 @@
                     } else if (involved.includes(me)) {
                         myShare = tx.amount / involved.length;
                     }
-                    
+
                     // 計算對方在這筆交易中的份額
                     let otherShare = 0;
                     if (tx.splitType === 'custom' && tx.customAmounts) {
@@ -1681,7 +2011,7 @@
                     } else if (involved.includes(other)) {
                         otherShare = tx.amount / involved.length;
                     }
-                    
+
                     // 計算這筆交易中我跟對方的關係
                     let amountChange = 0;
                     if (tx.payer === me) {
@@ -1691,7 +2021,7 @@
                         // 對方付錢，我欠對方我的份額
                         amountChange = -myShare;
                     }
-                    
+
                     if (Math.abs(amountChange) > 0.01) {
                         items.push({
                             id: tx.id, // 加入交易 ID 以追蹤結清狀態
@@ -1793,7 +2123,7 @@
                     {/* Menu */}
                     {isMenuOpen && <div className="fixed inset-0 z-50 flex"><div className="absolute inset-0 bg-black/50" onClick={() => setIsMenuOpen(false)}></div><div className="bg-white w-4/5 max-w-xs h-full shadow-2xl slide-in-left flex flex-col relative z-10"><div className="p-6 flex-1 overflow-y-auto no-scrollbar">
                         <h2 className="text-xl font-black text-gray-800 mb-4 flex items-center gap-2"><Icons.Globe /> {t.book_list}</h2>
-                        
+
                         {/* Shared Books Section */}
                         <div className="mb-4">
                             <div className="flex items-center gap-2 mb-2"><Icons.Users /><span className="text-sm font-bold text-gray-500">{t.shared_books}</span></div>
@@ -1811,9 +2141,9 @@
                         </div>
 
                     </div><div className="p-4 border-t bg-white space-y-2">
-                        <button onClick={() => { setIsMenuSettingsOpen(true); setIsMenuOpen(false); }} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200"><Icons.Settings /> {t.menu_settings}</button>
-                        <button onClick={openAddBookModal} className="w-full bg-black text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2"><Icons.Plus /> {t.add_book}</button>
-                    </div></div></div>}
+                            <button onClick={() => { setIsMenuSettingsOpen(true); setIsMenuOpen(false); }} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200"><Icons.Settings /> {t.menu_settings}</button>
+                            <button onClick={openAddBookModal} className="w-full bg-black text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2"><Icons.Plus /> {t.add_book}</button>
+                        </div></div></div>}
 
                     {/* Menu Settings Modal */}
                     {isMenuSettingsOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
@@ -1854,7 +2184,7 @@
                         <div className="space-y-4">
                             <div><label className="text-xs font-bold text-gray-400 block mb-1">{t.book_name}</label><input type="text" value={newBookName} onChange={e => setNewBookName(e.target.value)} placeholder="e.g. 🇯🇵 Trip" className="w-full bg-gray-50 px-4 py-3 rounded-xl font-bold outline-none border border-transparent focus:border-black" /></div>
                             <div><label className="text-xs font-bold text-gray-400 block mb-1">{t.currency}</label><input type="text" value={currencySearch} onChange={e => setCurrencySearch(e.target.value)} placeholder={t.search_currency} className="w-full bg-gray-50 px-3 py-2 rounded-lg text-sm mb-2 outline-none" /><div className="h-32 overflow-y-auto border rounded-xl p-2 space-y-1">{CURRENCIES.filter(c => c.code.includes(currencySearch.toUpperCase()) || (lang === 'zh' ? c.name_zh : c.name_en).includes(currencySearch)).map(c => (<button key={c.code} onClick={() => setNewBookCurrency(c.code)} className={`w-full flex justify-between items-center p-2 rounded-lg ${newBookCurrency === c.code ? 'bg-black text-white' : 'hover:bg-gray-100'}`}><span className="font-bold">{c.flag} {lang === 'zh' ? c.name_zh : c.name_en} ({c.code})</span><span className="text-sm opacity-70">{c.symbol}</span></button>))}</div></div>
-                            
+
                             {newBookType === 'personal' ? (
                                 <div><label className="text-xs font-bold text-gray-400 block mb-1">{t.select_owner}</label><div className="grid grid-cols-2 gap-2">{Object.entries(globalMembers).map(([name, avatar]) => (<button key={name} onClick={() => setNewBookOwner(name)} className={`p-2 rounded-xl font-bold border-2 text-sm flex items-center gap-2 ${newBookOwner === name ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-100 text-gray-400'}`}><span>{avatar}</span> {name}</button>))}</div></div>
                             ) : (
@@ -1869,13 +2199,13 @@
                     {isMemberManagerOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl h-[600px] flex flex-col"><div className="flex items-center gap-2 mb-4"><button onClick={() => { setIsMemberManagerOpen(false); if (memberManagerSource === 'book') setIsSettingsOpen(true); else setIsMenuSettingsOpen(true); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h3 className="text-xl font-black text-gray-800">{t.member_mgmt}</h3></div><div className="flex-1 overflow-y-auto space-y-2 mb-4 no-scrollbar">{Object.entries(globalMembers).map(([name, avatar]) => (<div key={name} className="bg-gray-50 p-3 rounded-xl border border-gray-100">{editingGlobalMember === name ? (<div className="space-y-3"><div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setEditMemberAvatar(a)} className={`text-xl p-2 rounded-lg flex items-center justify-center ${editMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input value={editMemberName} onChange={e => setEditMemberName(e.target.value)} className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-2 font-bold" /><button onClick={saveGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold text-sm shrink-0">{t.save}</button></div></div>) : (<div className="flex items-center justify-between"><span className="font-bold text-lg flex items-center gap-3"><span className="text-2xl">{avatar}</span> {name}</span><div className="flex gap-1"><button onClick={() => startEditGlobalMember(name, avatar)} className="text-gray-400 hover:text-black p-2"><Icons.Edit /></button><button onClick={() => handleDeleteGlobalMember(name)} className="text-gray-400 hover:text-red-500 p-2"><Icons.Trash /></button></div></div>)}</div>))}</div><div className="border-t pt-4"><p className="text-xs font-bold text-gray-400 mb-2">{t.add_member}</p><div className="grid grid-cols-5 gap-2 mb-3 max-h-32 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setNewMemberAvatar(a)} className={`text-2xl p-2 rounded-lg flex items-center justify-center ${newMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input type="text" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder={t.name} className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 font-bold outline-none" /><button onClick={handleAddGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold shrink-0">{t.add}</button></div></div></div></div>}
 
                     {/* Book Settings Modal */}
-                    {isBookMemberSettingsOpen && !isPersonalBook && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800">{t.book_settings}</h3><button onClick={() => setIsBookMemberSettingsOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button></div><p className="text-xs text-gray-400 mb-4">{t.select_members}:</p><div className="max-h-[60vh] overflow-y-auto space-y-2 no-scrollbar">{allDisplayMembers.map((name) => {const avatar = globalMembers[name] || '👻'; return (<button key={name} onClick={() => toggleBookMember(name)} className={`w-full p-3 rounded-xl border-2 font-bold text-lg flex items-center justify-between transition-all ${bookMembers.includes(name) ? 'border-black bg-gray-50' : 'border-gray-100'}`}><div className="flex items-center gap-2"><span className="text-2xl">{avatar}</span><span className="text-gray-800">{name}</span></div>{bookMembers.includes(name) && <Icons.Check />}</button>);})}</div></div></div>}
+                    {isBookMemberSettingsOpen && !isPersonalBook && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800">{t.book_settings}</h3><button onClick={() => setIsBookMemberSettingsOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button></div><p className="text-xs text-gray-400 mb-4">{t.select_members}:</p><div className="max-h-[60vh] overflow-y-auto space-y-2 no-scrollbar">{allDisplayMembers.map((name) => { const avatar = globalMembers[name] || '👻'; return (<button key={name} onClick={() => toggleBookMember(name)} className={`w-full p-3 rounded-xl border-2 font-bold text-lg flex items-center justify-between transition-all ${bookMembers.includes(name) ? 'border-black bg-gray-50' : 'border-gray-100'}`}><div className="flex items-center gap-2"><span className="text-2xl">{avatar}</span><span className="text-gray-800">{name}</span></div>{bookMembers.includes(name) && <Icons.Check />}</button>); })}</div></div></div>}
 
                     {/* Recently Deleted Books Modal */}
                     {isDeletedBooksOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] flex flex-col"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><Icons.Trash /> {t.recently_deleted}</h3><button onClick={() => setIsDeletedBooksOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button></div><div className="flex-1 overflow-y-auto space-y-2 no-scrollbar">{Object.keys(deletedBooks).length === 0 ? (<div className="text-center text-gray-400 py-10">{t.no_deleted_books}</div>) : (Object.entries(deletedBooks).map(([id, book]) => (<div key={id} className="bg-gray-50 p-4 rounded-xl border border-gray-200"><div className="flex justify-between items-start mb-2"><div><div className="font-bold text-gray-800">{book.name}</div><div className="text-xs text-gray-500">{lang === 'zh' ? (CURRENCIES.find(c => c.code === book.currency)?.name_zh || book.currency) : (CURRENCIES.find(c => c.code === book.currency)?.name_en || book.currency)} {t.ledger}</div></div><div className="text-xs text-red-500 font-bold bg-red-50 px-2 py-1 rounded">{getDaysLeft(book.deletedAt)} {t.days_left}</div></div><div className="flex gap-2 mt-3"><button onClick={() => handleRestoreBook(id)} className="flex-1 bg-green-500 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-600"><Icons.Undo /> {t.restore}</button><button onClick={(e) => handlePermanentDeleteBook(id, e)} className="flex-1 bg-red-500 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-1 hover:bg-red-600"><Icons.Trash /> {t.delete}</button></div></div>)))}</div></div></div>}
 
                     {/* Rate Modal */}
-                    {isRateModalOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl"><h3 className="text-lg font-black text-gray-800 mb-2">{t.set_rate} ({CURRENCIES.find(c=>c.code===currentBook.currency)?.code})</h3><p className="text-xs text-gray-500 mb-4">{t.rate_hint}</p><input type="number" inputMode="decimal" value={newRate} onChange={e => setNewRate(e.target.value)} className="w-full bg-gray-50 px-4 py-3 rounded-xl text-2xl font-black text-center outline-none border-2 border-black mb-4" autoFocus /><div className="flex gap-2"><button onClick={handleRefreshRate} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl flex items-center justify-center gap-1"><Icons.Refresh /> {t.fetch}</button><button onClick={() => { handleUpdateGlobalRate(); setIsSettingsOpen(true); }} className="flex-[2] bg-black text-white py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-all">{t.confirm}</button></div><button onClick={() => { setIsRateModalOpen(false); setIsSettingsOpen(true); }} className="w-full mt-2 py-3 text-gray-400 font-bold text-sm">{t.cancel}</button></div></div>}
+                    {isRateModalOpen && <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-xs rounded-3xl p-6 shadow-2xl"><h3 className="text-lg font-black text-gray-800 mb-2">{t.set_rate} ({CURRENCIES.find(c => c.code === currentBook.currency)?.code})</h3><p className="text-xs text-gray-500 mb-4">{t.rate_hint}</p><input type="number" inputMode="decimal" value={newRate} onChange={e => setNewRate(e.target.value)} className="w-full bg-gray-50 px-4 py-3 rounded-xl text-2xl font-black text-center outline-none border-2 border-black mb-4" autoFocus /><div className="flex gap-2"><button onClick={handleRefreshRate} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl flex items-center justify-center gap-1"><Icons.Refresh /> {t.fetch}</button><button onClick={() => { handleUpdateGlobalRate(); setIsSettingsOpen(true); }} className="flex-[2] bg-black text-white py-3 rounded-xl font-bold shadow-lg active:scale-95 transition-all">{t.confirm}</button></div><button onClick={() => { setIsRateModalOpen(false); setIsSettingsOpen(true); }} className="w-full mt-2 py-3 text-gray-400 font-bold text-sm">{t.cancel}</button></div></div>}
 
                     {/* Settings Modal - Unified Settings Page */}
                     {isSettingsOpen && <div className="fixed inset-0 z-[60] bg-gray-100 flex flex-col modal-enter">
@@ -2044,24 +2374,24 @@
                                 {/* Name */}
                                 <div>
                                     <label className="text-xs font-bold text-gray-400 ml-1">{t.recurring_name}</label>
-                                    <input type="text" value={recurringForm.name} onChange={e => setRecurringForm({...recurringForm, name: e.target.value})} 
+                                    <input type="text" value={recurringForm.name} onChange={e => setRecurringForm({ ...recurringForm, name: e.target.value })}
                                         className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold outline-none mt-1" placeholder={lang === 'zh' ? '房租' : 'Rent'} />
                                 </div>
-                                
+
                                 {/* Amount & Type (for personal) */}
                                 <div className="flex gap-3">
                                     <div className="flex-1">
                                         <label className="text-xs font-bold text-gray-400 ml-1">{t.recurring_amount}</label>
-                                        <input type="number" value={recurringForm.amount} onChange={e => setRecurringForm({...recurringForm, amount: e.target.value})} 
+                                        <input type="number" value={recurringForm.amount} onChange={e => setRecurringForm({ ...recurringForm, amount: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold outline-none mt-1" placeholder="0" />
                                     </div>
                                     {isPersonalBook && (
                                         <div className="w-24">
                                             <label className="text-xs font-bold text-gray-400 ml-1">{t.recurring_type}</label>
                                             <div className="flex mt-1 bg-gray-50 rounded-xl p-1">
-                                                <button onClick={() => setRecurringForm({...recurringForm, txType: 'expense'})} 
+                                                <button onClick={() => setRecurringForm({ ...recurringForm, txType: 'expense' })}
                                                     className={`flex-1 py-2 rounded-lg text-sm font-bold ${recurringForm.txType === 'expense' ? 'bg-red-500 text-white' : 'text-gray-400'}`}>-</button>
-                                                <button onClick={() => setRecurringForm({...recurringForm, txType: 'income'})} 
+                                                <button onClick={() => setRecurringForm({ ...recurringForm, txType: 'income' })}
                                                     className={`flex-1 py-2 rounded-lg text-sm font-bold ${recurringForm.txType === 'income' ? 'bg-green-500 text-white' : 'text-gray-400'}`}>+</button>
                                             </div>
                                         </div>
@@ -2074,13 +2404,13 @@
                                     <div className="flex gap-2 mt-1">
                                         <div className="flex items-center gap-2 flex-1 bg-gray-50 rounded-xl px-3 py-2">
                                             <span className="text-gray-600 font-bold text-sm">{t.every}</span>
-                                            <select value={recurringForm.intervalValue} onChange={e => setRecurringForm({...recurringForm, intervalValue: e.target.value})}
+                                            <select value={recurringForm.intervalValue} onChange={e => setRecurringForm({ ...recurringForm, intervalValue: e.target.value })}
                                                 className="bg-white border border-gray-200 rounded-lg px-2 py-1 font-bold text-center outline-none">
-                                                {recurringForm.intervalType === 'day' && [...Array(30)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                                                {recurringForm.intervalType === 'month' && [...Array(12)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
-                                                {recurringForm.intervalType === 'year' && [...Array(5)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                                {recurringForm.intervalType === 'day' && [...Array(30)].map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+                                                {recurringForm.intervalType === 'month' && [...Array(12)].map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
+                                                {recurringForm.intervalType === 'year' && [...Array(5)].map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
                                             </select>
-                                            <select value={recurringForm.intervalType} onChange={e => setRecurringForm({...recurringForm, intervalType: e.target.value, intervalValue: 1})}
+                                            <select value={recurringForm.intervalType} onChange={e => setRecurringForm({ ...recurringForm, intervalType: e.target.value, intervalValue: 1 })}
                                                 className="bg-white border border-gray-200 rounded-lg px-2 py-1 font-bold outline-none">
                                                 <option value="day">{t.interval_day}</option>
                                                 <option value="month">{t.interval_month}</option>
@@ -2097,7 +2427,7 @@
                                         <label className="text-xs font-bold text-gray-400 ml-1">{t.category} ({t.cancel})</label>
                                         <div className="flex flex-wrap gap-2 mt-2">
                                             {allCategories.map(cat => (
-                                                <button key={cat.id} onClick={() => setRecurringForm({...recurringForm, category: cat.id})}
+                                                <button key={cat.id} onClick={() => setRecurringForm({ ...recurringForm, category: cat.id })}
                                                     className={`px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-1 ${recurringForm.category === cat.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>
                                                     <span>{cat.icon}</span> {lang === 'zh' ? cat.name_zh : cat.name_en}
                                                 </button>
@@ -2113,7 +2443,7 @@
                                             <label className="text-xs font-bold text-gray-400 ml-1">{t.payer}</label>
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {bookMembers.map(m => (
-                                                    <button key={m} onClick={() => setRecurringForm({...recurringForm, payer: m})}
+                                                    <button key={m} onClick={() => setRecurringForm({ ...recurringForm, payer: m })}
                                                         className={`px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-1 ${recurringForm.payer === m ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}>
                                                         <span>{globalMembers[m]}</span> {m}
                                                     </button>
@@ -2125,10 +2455,10 @@
                                             <div className="flex flex-wrap gap-2 mt-2">
                                                 {bookMembers.map(m => (
                                                     <button key={m} onClick={() => {
-                                                        const newInvolved = recurringForm.involved.includes(m) 
-                                                            ? recurringForm.involved.filter(x => x !== m) 
+                                                        const newInvolved = recurringForm.involved.includes(m)
+                                                            ? recurringForm.involved.filter(x => x !== m)
                                                             : [...recurringForm.involved, m];
-                                                        if (newInvolved.length > 0) setRecurringForm({...recurringForm, involved: newInvolved});
+                                                        if (newInvolved.length > 0) setRecurringForm({ ...recurringForm, involved: newInvolved });
                                                     }}
                                                         className={`px-3 py-2 rounded-xl text-sm font-bold flex items-center gap-1 ${recurringForm.involved.includes(m) ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'}`}>
                                                         <span>{globalMembers[m]}</span> {m}
@@ -2145,19 +2475,19 @@
                                     <div className="space-y-2 mt-2">
                                         <div className="flex gap-2 items-center">
                                             <span className="text-sm text-gray-500 w-16">{t.start_date_label}</span>
-                                            <input type="date" value={recurringForm.startDate} onChange={e => setRecurringForm({...recurringForm, startDate: e.target.value})}
+                                            <input type="date" value={recurringForm.startDate} onChange={e => setRecurringForm({ ...recurringForm, startDate: e.target.value })}
                                                 className="flex-1 px-3 py-2 bg-gray-50 rounded-xl font-bold outline-none text-sm" />
                                         </div>
                                         <div className="flex gap-2 items-center">
                                             <span className="text-sm text-gray-500 w-16">{t.end_date_label}</span>
-                                            <button onClick={() => setRecurringForm({...recurringForm, isPermanent: true, endDate: ''})}
+                                            <button onClick={() => setRecurringForm({ ...recurringForm, isPermanent: true, endDate: '' })}
                                                 className={`px-3 py-2 rounded-xl text-sm font-bold ${recurringForm.isPermanent ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}>{t.permanent}</button>
                                             {!recurringForm.isPermanent && (
-                                                <input type="date" value={recurringForm.endDate} onChange={e => setRecurringForm({...recurringForm, endDate: e.target.value})}
+                                                <input type="date" value={recurringForm.endDate} onChange={e => setRecurringForm({ ...recurringForm, endDate: e.target.value })}
                                                     className="flex-1 px-3 py-2 bg-gray-50 rounded-xl font-bold outline-none text-sm" />
                                             )}
                                             {recurringForm.isPermanent && (
-                                                <button onClick={() => setRecurringForm({...recurringForm, isPermanent: false})}
+                                                <button onClick={() => setRecurringForm({ ...recurringForm, isPermanent: false })}
                                                     className="px-3 py-2 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold">{t.end_date_label}</button>
                                             )}
                                         </div>
@@ -2191,15 +2521,15 @@
                                     <Icons.Upload /> {t.upload_icon}
                                 </label>
                                 <div className="mt-2 flex items-center gap-3">
-                                    <input 
-                                        type="file" 
-                                        accept="image/*" 
+                                    <input
+                                        type="file"
+                                        accept="image/*"
                                         onChange={handleIconUpload}
                                         className="hidden"
                                         id="icon-upload"
                                     />
-                                    <label 
-                                        htmlFor="icon-upload" 
+                                    <label
+                                        htmlFor="icon-upload"
                                         className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-xl font-bold text-center cursor-pointer hover:bg-blue-100 transition flex items-center justify-center gap-2"
                                     >
                                         <Icons.Upload /> {t.custom_icon}
@@ -2217,16 +2547,16 @@
                         </div>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => { setIsCategoryEditOpen(false); setCustomIconUrl(''); }} className="flex-1 py-3 rounded-xl font-bold text-gray-500 bg-gray-100">{t.cancel}</button>
-                            <button onClick={() => { 
-                                if (!newCategoryName.trim()) return alert(t.alert_input); 
+                            <button onClick={() => {
+                                if (!newCategoryName.trim()) return alert(t.alert_input);
                                 const iconToSave = customIconUrl || newCategoryIcon;
-                                if (editingCategory) { 
-                                    db.ref('settings/customCategories/' + editingCategory.id).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: iconToSave }); 
-                                } else { 
-                                    const newId = 'cat_' + Date.now(); 
-                                    db.ref('settings/customCategories/' + newId).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: iconToSave }); 
-                                } 
-                                setIsCategoryEditOpen(false); 
+                                if (editingCategory) {
+                                    db.ref('settings/customCategories/' + editingCategory.id).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: iconToSave });
+                                } else {
+                                    const newId = 'cat_' + Date.now();
+                                    db.ref('settings/customCategories/' + newId).set({ name_zh: newCategoryName.trim(), name_en: newCategoryNameEn.trim() || newCategoryName.trim(), icon: iconToSave });
+                                }
+                                setIsCategoryEditOpen(false);
                                 setCustomIconUrl('');
                             }} className="flex-1 py-3 rounded-xl font-bold text-white bg-black">{t.save}</button>
                         </div>
@@ -2333,11 +2663,11 @@
                             <div className="flex-1 flex flex-col items-center justify-center p-6">
                                 <div className="text-6xl mb-6 animate-bounce">🤖</div>
                                 <h2 className="text-white text-2xl font-black mb-2">AI 分析中...</h2>
-                                <p className="text-gray-400 text-center">正在識別交易記錄<br/>請稍候</p>
+                                <p className="text-gray-400 text-center">正在識別交易記錄<br />請稍候</p>
                                 <div className="mt-8 flex gap-2">
                                     <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-                                    <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                                    <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                                    <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                                    <div className="w-3 h-3 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                                 </div>
                             </div>
                         )}
@@ -2349,7 +2679,7 @@
                             <h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><Icons.Filter /> {t.filter}</h3>
                             <button onClick={() => setIsFilterOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button>
                         </div>
-                        
+
                         {/* 日期篩選 */}
                         <div className="mb-4">
                             <label className="text-xs font-bold text-gray-400 block mb-2">{t.filter_date}</label>
@@ -2539,7 +2869,7 @@
                                     )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 mt-3">
-                                    <div 
+                                    <div
                                         className="bg-red-50 rounded-xl p-3 cursor-pointer hover:bg-red-100 transition active:scale-95"
                                         onClick={() => setIsExpenseDetailOpen(true)}
                                     >
@@ -2549,7 +2879,7 @@
                                             <div className="text-xs text-red-400 mt-1">≈ NT${Math.round(monthlyStats.totalExpense * activeRate).toLocaleString()}</div>
                                         )}
                                     </div>
-                                    <div 
+                                    <div
                                         className="bg-green-50 rounded-xl p-3 cursor-pointer hover:bg-green-100 transition active:scale-95"
                                         onClick={() => setIsIncomeDetailOpen(true)}
                                     >
@@ -2600,7 +2930,7 @@
                             const prevItem = index > 0 ? transactions[index - 1] : null;
                             const showDateHeader = !prevItem || prevItem.date !== t_item.date;
                             const formattedDate = t_item.date ? t_item.date.slice(5).replace('-', '/') : '';
-                            
+
                             if (isPersonalBook) {
                                 return (
                                     <React.Fragment key={t_item.id}>
@@ -2630,44 +2960,44 @@
                                     </React.Fragment>
                                 );
                             }
-                            
+
                             return (
                                 <React.Fragment key={t_item.id}>
                                     {showDateHeader && <div className="text-lg font-black text-gray-500 mt-4 mb-2 ml-1">{formattedDate}</div>}
                                     <SwipeToDelete onDelete={() => handleDelete(t_item.id)}>
                                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-transparent hover:border-gray-200 transition-all">
-                                        <div onClick={() => setViewingFilteredTx(t_item)} className="flex items-start gap-3 mb-2 cursor-pointer active:opacity-70">
-                                            <div className="flex flex-col items-center min-w-[3rem]">
-                                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl font-bold shadow-sm bg-gray-100">{avatar}</div>
-                                                <span className="text-[10px] font-bold text-gray-400 mt-1 text-center leading-tight">{t_item.payer}</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                {isLongDesc ? (
-                                                    <div>
-                                                        <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
-                                                        <div className="flex items-center justify-between mt-1">
-                                                            <p className="text-xs text-gray-400 flex items-center gap-1"><Icons.Users /> {involvedCount} {t.involved}</p>
-                                                            <div className="text-right">
-                                                                <span className="text-xl font-black text-gray-800">{currentCurrency.symbol}{t_item.amount.toLocaleString()}</span>
-                                                                {t_item.currency !== 'TWD' && <span className="text-xs font-bold text-gray-400 ml-2">≈ NT${(t_item.amountTWD || Math.round(t_item.amount * activeRate)).toLocaleString()}</span>}
+                                            <div onClick={() => setViewingFilteredTx(t_item)} className="flex items-start gap-3 mb-2 cursor-pointer active:opacity-70">
+                                                <div className="flex flex-col items-center min-w-[3rem]">
+                                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl font-bold shadow-sm bg-gray-100">{avatar}</div>
+                                                    <span className="text-[10px] font-bold text-gray-400 mt-1 text-center leading-tight">{t_item.payer}</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    {isLongDesc ? (
+                                                        <div>
+                                                            <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
+                                                            <div className="flex items-center justify-between mt-1">
+                                                                <p className="text-xs text-gray-400 flex items-center gap-1"><Icons.Users /> {involvedCount} {t.involved}</p>
+                                                                <div className="text-right">
+                                                                    <span className="text-xl font-black text-gray-800">{currentCurrency.symbol}{t_item.amount.toLocaleString()}</span>
+                                                                    {t_item.currency !== 'TWD' && <span className="text-xs font-bold text-gray-400 ml-2">≈ NT${(t_item.amountTWD || Math.round(t_item.amount * activeRate)).toLocaleString()}</span>}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <div className="min-w-0">
-                                                            <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
-                                                            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Icons.Users /> {involvedCount} {t.involved}</p>
+                                                    ) : (
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="min-w-0">
+                                                                <p className="font-bold text-gray-800 text-lg leading-tight">{formatDescription(t_item.description)}{t_item.splitType === 'custom' && <span className="ml-1 bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded text-[10px] font-bold align-middle">AB分</span>}</p>
+                                                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1"><Icons.Users /> {involvedCount} {t.involved}</p>
+                                                            </div>
+                                                            <div className="text-right shrink-0">
+                                                                <p className="text-xl font-black text-gray-800">{currentCurrency.symbol}{t_item.amount.toLocaleString()}</p>
+                                                                {t_item.currency !== 'TWD' && <p className="text-xs font-bold text-gray-400 mt-1">≈ NT${(t_item.amountTWD || Math.round(t_item.amount * activeRate)).toLocaleString()}</p>}
+                                                            </div>
                                                         </div>
-                                                        <div className="text-right shrink-0">
-                                                            <p className="text-xl font-black text-gray-800">{currentCurrency.symbol}{t_item.amount.toLocaleString()}</p>
-                                                            {t_item.currency !== 'TWD' && <p className="text-xs font-bold text-gray-400 mt-1">≈ NT${(t_item.amountTWD || Math.round(t_item.amount * activeRate)).toLocaleString()}</p>}
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-50">
+                                            <div className="flex justify-end gap-1 mt-2 pt-2 border-t border-gray-50">
                                                 <button onClick={() => openModal(t_item)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg"><Icons.Edit /></button>
                                                 <button onClick={() => handleDelete(t_item.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg"><Icons.Trash /></button>
                                             </div>
@@ -2682,160 +3012,298 @@
                     <button onClick={() => openModal(null)} className="fab-btn fixed bottom-6 right-6 w-16 h-16 bg-gray-900 text-white rounded-full shadow-2xl flex items-center justify-center btn-press z-30"><Icons.Plus /></button>
 
                     {/* Member Detail Modal */}
-                    {viewingMemberDebt && !isPersonalBook && (<div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl max-h-[80vh] overflow-y-auto no-scrollbar">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-black text-gray-800 flex items-center gap-2"><span>{globalMembers[viewingMemberDebt]}</span> {viewingMemberDebt}</h3>
-                            <button onClick={() => { setViewingMemberDebt(null); setExpandedDebtDetail(null); }} className="p-2 bg-gray-100 rounded-full">✕</button>
+                    {viewingMemberDebt && !isPersonalBook && (<div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter" onClick={(e) => { if (e.target === e.currentTarget) { setViewingMemberDebt(null); setExpandedDebtDetail(null); } }}><div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                        {/* Header */}
+                        <div className="p-6 pb-3 border-b border-gray-100">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-2xl shadow-lg">{globalMembers[viewingMemberDebt]}</div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-gray-800">{viewingMemberDebt}</h3>
+                                        <p className="text-xs text-gray-400">{lang === 'zh' ? '帳務明細' : 'Account Details'}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => { setViewingMemberDebt(null); setExpandedDebtDetail(null); }} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">✕</button>
+                            </div>
+                            {/* Summary Bar */}
+                            {(() => {
+                                const { toPay, toReceive } = getMemberDebtDetail(viewingMemberDebt);
+                                const totalPay = toPay.reduce((sum, d) => sum + d.amount, 0);
+                                const totalReceive = toReceive.reduce((sum, d) => sum + d.amount, 0);
+                                const netBalance = totalReceive - totalPay;
+                                return (
+                                    <div className="flex gap-2 text-center">
+                                        <div className="flex-1 bg-red-50 rounded-xl p-2">
+                                            <div className="text-[10px] font-bold text-red-400 uppercase">{t.payables}</div>
+                                            <div className="text-lg font-black text-red-600">{currentCurrency.symbol}{Math.round(totalPay).toLocaleString()}</div>
+                                        </div>
+                                        <div className="flex-1 bg-green-50 rounded-xl p-2">
+                                            <div className="text-[10px] font-bold text-green-400 uppercase">{t.receivables}</div>
+                                            <div className="text-lg font-black text-green-600">{currentCurrency.symbol}{Math.round(totalReceive).toLocaleString()}</div>
+                                        </div>
+                                        <div className={`flex-1 rounded-xl p-2 ${netBalance >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+                                            <div className="text-[10px] font-bold text-gray-400 uppercase">{lang === 'zh' ? '淨額' : 'Net'}</div>
+                                            <div className={`text-lg font-black ${netBalance >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                                {netBalance >= 0 ? '+' : ''}{currentCurrency.symbol}{Math.round(netBalance).toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
-                        <p className="text-xs text-gray-400 mb-4 text-center">{lang === 'zh' ? '← 左滑結清 · 已結清項目右滑取消 →' : '← Swipe left to clear · right to undo →'}</p>
-                        <div className="space-y-4">{(() => { const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>
-                        {toPay.length > 0 && (<div><p className="text-xs font-bold text-red-500 mb-2 uppercase">{t.payables}</p>{toPay.map((d, i) => {
-                            const isExpanded = expandedDebtDetail && expandedDebtDetail.type === 'pay' && expandedDebtDetail.person === d.to;
-                            const details = getDetailBetweenTwo(viewingMemberDebt, d.to);
-                            const clearedAmount = getClearedAmountBetweenTwo(viewingMemberDebt, d.to);
-                            const remainingAmount = Math.round(d.amount + clearedAmount);
-                            const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.to);
-                            return (<div key={i} className="mb-2">
-                                <div className={`flex justify-between items-center p-3 rounded-xl transition-all ${isAllCleared ? 'bg-red-500 opacity-60' : 'bg-red-500'}`}>
-                                    <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'pay', person: d.to })} className="flex-1 cursor-pointer active:opacity-80">
-                                        <span className={`font-bold text-white ${isAllCleared ? 'opacity-80' : ''}`}>{t.give} <span className="inline-block mx-1">{globalMembers[d.to]}</span>{d.to}</span>
+                        {/* Swipe Hint */}
+                        <div className="px-6 py-2 bg-gray-50 border-b border-gray-100">
+                            <p className="text-[10px] text-gray-400 text-center font-medium">{lang === 'zh' ? '💡 左滑結清 · 已結清項目右滑取消' : '💡 Swipe left to clear · right to undo'}</p>
+                        </div>
+                        {/* Scrollable Content */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">{(() => {
+                            const { toPay, toReceive, myExpense } = getMemberDebtDetail(viewingMemberDebt); return (<>
+                                {toPay.length > 0 && (<div className="mb-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                                            <span className="text-white text-xs">▼</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-red-600">{t.payables}</p>
+                                        <span className="text-xs text-gray-400">({toPay.length})</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {isAllCleared ? (
-                                            <span className="font-black text-white line-through opacity-70">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
-                                        ) : clearedAmount !== 0 ? (
-                                            <div className="text-right">
-                                                <span className="font-black text-white">{currentCurrency.symbol}{remainingAmount.toLocaleString()}</span>
-                                                <span className="text-white/60 text-xs ml-1 line-through">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="font-black text-white">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
-                                        )}
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); isAllCleared ? unclearAllBetweenTwo(viewingMemberDebt, d.to) : clearAllBetweenTwo(viewingMemberDebt, d.to); }}
-                                            className="w-6 h-6 rounded border-2 border-white flex items-center justify-center transition-all"
-                                            style={{ backgroundColor: isAllCleared ? 'white' : 'transparent' }}
-                                        >
-                                            {isAllCleared && <span className="text-red-500 text-sm font-bold">✓</span>}
-                                        </button>
-                                    </div>
-                                </div>
-                                {isExpanded && details.length > 0 && (
-                                    <div className="bg-red-50 rounded-xl p-3 mt-1 space-y-1">
-                                        {details.map((item, j) => {
-                                            const isCleared = isTransactionCleared(item.id, viewingMemberDebt, d.to);
-                                            return (
-                                                <SwipeToClear 
-                                                    key={j} 
-                                                    onClear={() => clearTransaction(item.id, viewingMemberDebt, d.to)}
-                                                    onUnclear={() => unclearTransaction(item.id, viewingMemberDebt, d.to)}
-                                                    isCleared={isCleared}
-                                                    clearText={t.mark_cleared}
-                                                >
-                                                    <div className={`flex justify-between items-center text-sm p-2 rounded-lg ${isCleared ? 'cleared-item' : 'bg-white'}`}>
-                                                        <div className="flex-1">
-                                                            <span className={`font-bold debt-detail-date ${isCleared ? 'opacity-60' : ''}`}>{item.date.slice(5)}</span>
-                                                            <span className={`debt-detail-desc ml-1 ${isCleared ? 'opacity-60' : ''}`}>{formatDescription(item.description)}</span>
-                                                            <span className={`text-gray-400 text-xs ml-1 ${isCleared ? 'opacity-60' : ''}`}>({item.payer}{t.other_paid})</span>
-                                                        </div>
-                                                        <span className={`font-bold ${isCleared ? 'text-gray-400 line-through' : (item.isPositive ? 'text-green-600' : 'text-red-600')}`}>
-                                                            {item.isPositive ? '+' : '-'}{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}
-                                                        </span>
+                                    <div className="space-y-2">
+                                        {toPay.map((d, i) => {
+                                            const isExpanded = expandedDebtDetail && expandedDebtDetail.type === 'pay' && expandedDebtDetail.person === d.to;
+                                            const details = getDetailBetweenTwo(viewingMemberDebt, d.to);
+                                            const clearedAmount = getClearedAmountBetweenTwo(viewingMemberDebt, d.to);
+                                            const remainingAmount = Math.round(d.amount + clearedAmount);
+                                            const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.to);
+                                            const clearedCount = details.filter(item => isTransactionCleared(item.id, viewingMemberDebt, d.to)).length;
+                                            return (<div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                                                <div className={`flex items-center p-4 transition-all ${isAllCleared ? 'bg-gray-100' : ''}`}>
+                                                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-lg mr-3 shrink-0">
+                                                        {globalMembers[d.to]}
                                                     </div>
-                                                </SwipeToClear>
-                                            );
+                                                    <div className="flex-1 min-w-0" onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'pay', person: d.to })}>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className={`font-bold text-gray-800 ${isAllCleared ? 'line-through opacity-60' : ''}`}>{t.give} {d.to}</span>
+                                                            {isAllCleared && <span className="text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">{t.cleared}</span>}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-xs text-gray-400">{details.length} {lang === 'zh' ? '筆明細' : 'items'}</span>
+                                                            {clearedCount > 0 && <span className="text-xs text-green-500">{clearedCount} {t.cleared}</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right ml-2">
+                                                        {isAllCleared ? (
+                                                            <span className="text-lg font-black text-gray-400 line-through">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                                        ) : clearedAmount !== 0 ? (
+                                                            <div>
+                                                                <span className="text-lg font-black text-red-600">{currentCurrency.symbol}{remainingAmount.toLocaleString()}</span>
+                                                                <div className="text-xs text-gray-400 line-through">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-lg font-black text-red-600">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); isAllCleared ? unclearAllBetweenTwo(viewingMemberDebt, d.to) : clearAllBetweenTwo(viewingMemberDebt, d.to); }}
+                                                        className={`ml-3 w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${isAllCleared ? 'bg-green-500 text-white' : 'border-2 border-gray-300 text-gray-300 hover:border-green-500 hover:text-green-500'}`}
+                                                    >
+                                                        {isAllCleared ? '✓' : ''}
+                                                    </button>
+                                                </div>
+                                                {isExpanded && details.length > 0 && (
+                                                    <div className="bg-gray-50 border-t border-gray-100 p-3 space-y-2">
+                                                        {details.map((item, j) => {
+                                                            const isCleared = isTransactionCleared(item.id, viewingMemberDebt, d.to);
+                                                            return (
+                                                                <SwipeToClear
+                                                                    key={j}
+                                                                    onClear={() => clearTransaction(item.id, viewingMemberDebt, d.to)}
+                                                                    onUnclear={() => unclearTransaction(item.id, viewingMemberDebt, d.to)}
+                                                                    isCleared={isCleared}
+                                                                    clearText={t.mark_cleared}
+                                                                >
+                                                                    <div className={`flex items-center justify-between p-3 rounded-xl ${isCleared ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100'}`}>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className={`text-sm font-bold text-gray-800 ${isCleared ? 'line-through opacity-60' : ''}`}>
+                                                                                    {formatDescription(item.description)}
+                                                                                </span>
+                                                                                {isCleared && <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded">✓</span>}
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2 mt-1">
+                                                                                <span className="text-xs text-gray-400">{item.date}</span>
+                                                                                <span className="text-xs text-gray-300">•</span>
+                                                                                <span className="text-xs text-gray-400">{item.payer} {t.other_paid}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <span className={`text-base font-black ml-2 ${isCleared ? 'text-gray-400 line-through' : 'text-red-600'}`}>
+                                                                            -{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </SwipeToClear>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>);
                                         })}
                                     </div>
-                                )}
-                            </div>);
-                        })}</div>)}
-                        {toReceive.length > 0 && (<div><p className="text-xs font-bold text-green-600 mb-2 uppercase">{t.receivables}</p>{toReceive.map((d, i) => {
-                            const isExpanded = expandedDebtDetail && expandedDebtDetail.type === 'receive' && expandedDebtDetail.person === d.from;
-                            const details = getDetailBetweenTwo(viewingMemberDebt, d.from);
-                            const clearedAmount = getClearedAmountBetweenTwo(viewingMemberDebt, d.from);
-                            const remainingAmount = Math.round(d.amount - clearedAmount);
-                            const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.from);
-                            return (<div key={i} className="mb-2">
-                                <div className={`flex justify-between items-center p-3 rounded-xl transition-all ${isAllCleared ? 'bg-green-600 opacity-60' : 'bg-green-600'}`}>
-                                    <div onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'receive', person: d.from })} className="flex-1 cursor-pointer active:opacity-80">
-                                        <span className={`font-bold text-white ${isAllCleared ? 'opacity-80' : ''}`}>{t.receive} <span className="inline-block mx-1">{globalMembers[d.from]}</span>{d.from}</span>
+                                </div>)}
+                                {toReceive.length > 0 && (<div className="mb-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                            <span className="text-white text-xs">▲</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-green-600">{t.receivables}</p>
+                                        <span className="text-xs text-gray-400">({toReceive.length})</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {isAllCleared ? (
-                                            <span className="font-black text-white line-through opacity-70">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
-                                        ) : clearedAmount !== 0 ? (
-                                            <div className="text-right">
-                                                <span className="font-black text-white">{currentCurrency.symbol}{remainingAmount.toLocaleString()}</span>
-                                                <span className="text-white/60 text-xs ml-1 line-through">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
-                                            </div>
-                                        ) : (
-                                            <span className="font-black text-white">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
-                                        )}
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); isAllCleared ? unclearAllBetweenTwo(viewingMemberDebt, d.from) : clearAllBetweenTwo(viewingMemberDebt, d.from); }}
-                                            className="w-6 h-6 rounded border-2 border-white flex items-center justify-center transition-all"
-                                            style={{ backgroundColor: isAllCleared ? 'white' : 'transparent' }}
-                                        >
-                                            {isAllCleared && <span className="text-green-600 text-sm font-bold">✓</span>}
-                                        </button>
-                                    </div>
-                                </div>
-                                {isExpanded && details.length > 0 && (
-                                    <div className="bg-green-50 rounded-xl p-3 mt-1 space-y-1">
-                                        {details.map((item, j) => {
-                                            const isCleared = isTransactionCleared(item.id, viewingMemberDebt, d.from);
-                                            return (
-                                                <SwipeToClear 
-                                                    key={j} 
-                                                    onClear={() => clearTransaction(item.id, viewingMemberDebt, d.from)}
-                                                    onUnclear={() => unclearTransaction(item.id, viewingMemberDebt, d.from)}
-                                                    isCleared={isCleared}
-                                                    clearText={t.mark_cleared}
-                                                >
-                                                    <div className={`flex justify-between items-center text-sm p-2 rounded-lg ${isCleared ? 'cleared-item' : 'bg-white'}`}>
-                                                        <div className="flex-1">
-                                                            <span className={`font-bold debt-detail-date ${isCleared ? 'opacity-60' : ''}`}>{item.date.slice(5)}</span>
-                                                            <span className={`debt-detail-desc ml-1 ${isCleared ? 'opacity-60' : ''}`}>{formatDescription(item.description)}</span>
-                                                            <span className={`text-gray-400 text-xs ml-1 ${isCleared ? 'opacity-60' : ''}`}>({item.payer}{t.other_paid})</span>
-                                                        </div>
-                                                        <span className={`font-bold ${isCleared ? 'text-gray-400 line-through' : (item.isPositive ? 'text-green-600' : 'text-red-600')}`}>
-                                                            {item.isPositive ? '+' : '-'}{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}
-                                                        </span>
+                                    <div className="space-y-2">
+                                        {toReceive.map((d, i) => {
+                                            const isExpanded = expandedDebtDetail && expandedDebtDetail.type === 'receive' && expandedDebtDetail.person === d.from;
+                                            const details = getDetailBetweenTwo(viewingMemberDebt, d.from);
+                                            const clearedAmount = getClearedAmountBetweenTwo(viewingMemberDebt, d.from);
+                                            const remainingAmount = Math.round(d.amount - clearedAmount);
+                                            const isAllCleared = isAllClearedBetweenTwo(viewingMemberDebt, d.from);
+                                            const clearedCount = details.filter(item => isTransactionCleared(item.id, viewingMemberDebt, d.from)).length;
+                                            return (<div key={i} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                                                <div className={`flex items-center p-4 transition-all ${isAllCleared ? 'bg-gray-100' : ''}`}>
+                                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-lg mr-3 shrink-0">
+                                                        {globalMembers[d.from]}
                                                     </div>
-                                                </SwipeToClear>
-                                            );
+                                                    <div className="flex-1 min-w-0" onClick={() => setExpandedDebtDetail(isExpanded ? null : { type: 'receive', person: d.from })}>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className={`font-bold text-gray-800 ${isAllCleared ? 'line-through opacity-60' : ''}`}>{t.receive} {d.from}</span>
+                                                            {isAllCleared && <span className="text-xs bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded">{t.cleared}</span>}
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-xs text-gray-400">{details.length} {lang === 'zh' ? '筆明細' : 'items'}</span>
+                                                            {clearedCount > 0 && <span className="text-xs text-green-500">{clearedCount} {t.cleared}</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right ml-2">
+                                                        {isAllCleared ? (
+                                                            <span className="text-lg font-black text-gray-400 line-through">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                                        ) : clearedAmount !== 0 ? (
+                                                            <div>
+                                                                <span className="text-lg font-black text-green-600">{currentCurrency.symbol}{remainingAmount.toLocaleString()}</span>
+                                                                <div className="text-xs text-gray-400 line-through">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-lg font-black text-green-600">{currentCurrency.symbol}{Math.round(d.amount).toLocaleString()}</span>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); isAllCleared ? unclearAllBetweenTwo(viewingMemberDebt, d.from) : clearAllBetweenTwo(viewingMemberDebt, d.from); }}
+                                                        className={`ml-3 w-8 h-8 rounded-full flex items-center justify-center transition-all shrink-0 ${isAllCleared ? 'bg-green-500 text-white' : 'border-2 border-gray-300 text-gray-300 hover:border-green-500 hover:text-green-500'}`}
+                                                    >
+                                                        {isAllCleared ? '✓' : ''}
+                                                    </button>
+                                                </div>
+                                                {isExpanded && details.length > 0 && (
+                                                    <div className="bg-gray-50 border-t border-gray-100 p-3 space-y-2">
+                                                        {details.map((item, j) => {
+                                                            const isCleared = isTransactionCleared(item.id, viewingMemberDebt, d.from);
+                                                            return (
+                                                                <SwipeToClear
+                                                                    key={j}
+                                                                    onClear={() => clearTransaction(item.id, viewingMemberDebt, d.from)}
+                                                                    onUnclear={() => unclearTransaction(item.id, viewingMemberDebt, d.from)}
+                                                                    isCleared={isCleared}
+                                                                    clearText={t.mark_cleared}
+                                                                >
+                                                                    <div className={`flex items-center justify-between p-3 rounded-xl ${isCleared ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100'}`}>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className={`text-sm font-bold text-gray-800 ${isCleared ? 'line-through opacity-60' : ''}`}>
+                                                                                    {formatDescription(item.description)}
+                                                                                </span>
+                                                                                {isCleared && <span className="text-[10px] bg-green-500 text-white px-1.5 py-0.5 rounded">✓</span>}
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2 mt-1">
+                                                                                <span className="text-xs text-gray-400">{item.date}</span>
+                                                                                <span className="text-xs text-gray-300">•</span>
+                                                                                <span className="text-xs text-gray-400">{item.payer} {t.other_paid}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <span className={`text-base font-black ml-2 ${isCleared ? 'text-gray-400 line-through' : 'text-green-600'}`}>
+                                                                            +{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}
+                                                                        </span>
+                                                                    </div>
+                                                                </SwipeToClear>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>);
                                         })}
                                     </div>
+                                </div>)}
+                                {myExpense.expenseItems.length > 0 && (<div className="mb-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                            <span className="text-white text-xs">📊</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-blue-600">{t.my_expense}</p>
+                                        <span className="text-xs text-gray-400">({myExpense.expenseItems.length})</span>
+                                    </div>
+                                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                                        <div className="divide-y divide-gray-50">
+                                            {myExpense.expenseItems.slice(0, 5).map((item, i) => (
+                                                <div key={i} className="flex items-center justify-between p-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="text-sm font-bold text-gray-800">{formatDescription(item.description)}</span>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-xs text-gray-400">{item.date}</span>
+                                                            <span className="text-xs text-gray-300">•</span>
+                                                            <span className="text-xs text-gray-400">{item.payer === viewingMemberDebt ? t.self_paid : item.payer + t.other_paid}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="font-bold text-blue-600 ml-2">{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {myExpense.expenseItems.length > 5 && (
+                                            <div className="p-2 bg-gray-50 text-center">
+                                                <span className="text-xs text-gray-400">+{myExpense.expenseItems.length - 5} {lang === 'zh' ? '更多項目' : 'more items'}</span>
+                                            </div>
+                                        )}
+                                        <div className="bg-blue-50 p-4 flex justify-between items-center">
+                                            <span className="font-bold text-gray-700">{t.my_expense_total}</span>
+                                            <span className="text-xl font-black text-blue-700">{currentCurrency.symbol}{Math.round(myExpense.totalExpense).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>)}
+                                {toPay.length === 0 && toReceive.length === 0 && myExpense.expenseItems.length === 0 && (
+                                    <div className="text-center py-10">
+                                        <div className="text-4xl mb-3">🎉</div>
+                                        <p className="text-gray-400 font-bold">{t.settled}</p>
+                                        <p className="text-xs text-gray-300 mt-1">{lang === 'zh' ? '目前沒有待處理的帳務' : 'No pending transactions'}</p>
+                                    </div>
                                 )}
-                            </div>);
-                        })}</div>)}
-                        {myExpense.expenseItems.length > 0 && (<div><p className="text-xs font-bold text-blue-600 mb-2 uppercase">{t.my_expense}</p><div className="bg-blue-50 rounded-xl p-3 space-y-2">{myExpense.expenseItems.map((item, i) => (<div key={i} className="flex justify-between items-center text-sm"><div className="flex-1"><span className="font-bold debt-detail-date">{item.date.slice(5)}</span><span className="debt-detail-desc ml-1">{formatDescription(item.description)}</span><span className="text-gray-400 text-xs ml-1">({item.payer === viewingMemberDebt ? t.self_paid : item.payer + t.other_paid})</span></div><span className="font-bold text-blue-600">{currentCurrency.symbol}{Math.round(item.amount).toLocaleString()}</span></div>))}<div className="border-t border-blue-200 pt-2 mt-2 flex justify-between items-center"><span className="font-bold text-gray-700">{t.my_expense_total}</span><span className="font-black text-blue-700">{currentCurrency.symbol}{Math.round(myExpense.totalExpense).toLocaleString()}</span></div></div></div>)}
-                        {toPay.length === 0 && toReceive.length === 0 && myExpense.expenseItems.length === 0 && (<div className="text-center text-gray-400 py-4">{t.settled}</div>)}
-                    </>); })()}</div></div></div>)}
+                            </>);
+                        })()}</div></div></div>)}
 
                     {/* Transaction Modal */}
                     {isModalOpen && (<div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"><div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeModal}></div><div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-6 modal-enter relative z-50 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
                         <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-black text-gray-800">{editingId ? t.update : t.add} ({currentCurrency.code})</h3><button onClick={closeModal} className="p-2 bg-gray-100 rounded-full text-gray-500">✕</button></div>
-                        
+
                         {isPersonalBook ? (
                             <div className="space-y-5">
                                 <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.type}</label><div className="grid grid-cols-2 gap-3">
-                                    <button onClick={() => setFormData({...formData, txType: 'expense'})} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all flex items-center justify-center gap-2 ${formData.txType === 'expense' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-100 text-gray-400'}`}><Icons.TrendDown /> {t.expense}</button>
-                                    <button onClick={() => setFormData({...formData, txType: 'income'})} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all flex items-center justify-center gap-2 ${formData.txType === 'income' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 text-gray-400'}`}><Icons.TrendUp /> {t.income}</button>
+                                    <button onClick={() => setFormData({ ...formData, txType: 'expense' })} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all flex items-center justify-center gap-2 ${formData.txType === 'expense' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-100 text-gray-400'}`}><Icons.TrendDown /> {t.expense}</button>
+                                    <button onClick={() => setFormData({ ...formData, txType: 'income' })} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all flex items-center justify-center gap-2 ${formData.txType === 'income' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 text-gray-400'}`}><Icons.TrendUp /> {t.income}</button>
                                 </div></div>
-                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.category}</label><div className="grid grid-cols-5 gap-2">{allCategories.map(cat => (<button key={cat.id} onClick={() => setFormData({...formData, category: cat.id})} className={`p-2 rounded-xl text-center transition-all ${formData.category === cat.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}><div className="text-xl flex items-center justify-center h-6">{renderCategoryIcon(cat.icon, 'text-xl')}</div><div className="text-[10px] font-bold">{lang === 'zh' ? cat.name_zh : cat.name_en}</div></button>))}</div></div>
-                                <div className="flex gap-3"><div className="flex-1"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.amount}</label><input type="number" inputMode="decimal" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-2xl font-black text-gray-800 outline-none" placeholder="0" /></div>{currentBook.currency !== 'TWD' && (<div className="w-28"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({...formData, exchangeRate: e.target.value})} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-xl font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}</div>
-                                <div className="grid grid-cols-3 gap-3"><div><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.date}</label><input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full px-2 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-800 outline-none" /></div><div className="col-span-2"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.item}</label><input type="text" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="e.g. Coffee" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-base font-bold text-gray-800 outline-none" /></div></div>
+                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.category}</label><div className="grid grid-cols-5 gap-2">{allCategories.map(cat => (<button key={cat.id} onClick={() => setFormData({ ...formData, category: cat.id })} className={`p-2 rounded-xl text-center transition-all ${formData.category === cat.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}><div className="text-xl flex items-center justify-center h-6">{renderCategoryIcon(cat.icon, 'text-xl')}</div><div className="text-[10px] font-bold">{lang === 'zh' ? cat.name_zh : cat.name_en}</div></button>))}</div></div>
+                                <div className="flex gap-3"><div className="flex-1"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.amount}</label><input type="number" inputMode="decimal" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-2xl font-black text-gray-800 outline-none" placeholder="0" /></div>{currentBook.currency !== 'TWD' && (<div className="w-28"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-xl font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}</div>
+                                <div className="grid grid-cols-3 gap-3"><div><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.date}</label><input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full px-2 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-800 outline-none" /></div><div className="col-span-2"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.item}</label><input type="text" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="e.g. Coffee" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-base font-bold text-gray-800 outline-none" /></div></div>
                                 <button onClick={handleSave} className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-xl btn-press mt-4">{editingId ? t.update : t.confirm}</button>
                             </div>
                         ) : (
                             <div className="space-y-5">
-                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.payer}</label><div className="flex flex-wrap gap-3">{bookMembers.map((m) => { const isSelected = formData.payer === m; return (<button key={m} onClick={() => setFormData({...formData, payer: m})} className={`flex-1 min-w-[30%] p-3 rounded-2xl border-2 font-bold text-base transition-all flex flex-col items-center gap-1 ${isSelected ? 'border-black bg-black text-white' : 'border-gray-100 text-gray-400'}`}><span className="text-xl">{globalMembers[m] || '👻'}</span>{m}</button>) })}</div></div>
+                                <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.payer}</label><div className="flex flex-wrap gap-3">{bookMembers.map((m) => { const isSelected = formData.payer === m; return (<button key={m} onClick={() => setFormData({ ...formData, payer: m })} className={`flex-1 min-w-[30%] p-3 rounded-2xl border-2 font-bold text-base transition-all flex flex-col items-center gap-1 ${isSelected ? 'border-black bg-black text-white' : 'border-gray-100 text-gray-400'}`}><span className="text-xl">{globalMembers[m] || '👻'}</span>{m}</button>) })}</div></div>
                                 <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.split_type}</label><div className="grid grid-cols-2 gap-3"><button onClick={() => handleSplitTypeChange('equal')} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all ${formData.splitType === 'equal' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-100 text-gray-400'}`}>{t.equal_split}</button><button onClick={() => handleSplitTypeChange('custom')} className={`p-3 rounded-2xl border-2 font-bold text-base transition-all ${formData.splitType === 'custom' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-100 text-gray-400'}`}>{t.custom_split}</button></div></div>
                                 <div><label className="text-xs font-bold text-gray-400 ml-1 mb-2 block uppercase">{t.split_target}</label><div className="space-y-2">{bookMembers.map(m => { const isIncluded = (formData.involved || bookMembers).includes(m); const perPersonAmount = formData.splitType === 'equal' && formData.amount && formData.involved.length > 0 ? (parseFloat(formData.amount) / formData.involved.length) : 0; return (<div key={m} className="space-y-1"><button onClick={() => toggleInvolvedMember(m)} className={`w-full p-2 rounded-xl border font-bold text-sm flex items-center gap-2 ${isIncluded ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-gray-300'}`}><div className={`w-4 h-4 rounded-full border ${isIncluded ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}></div><span className="text-lg">{globalMembers[m] || '👻'}</span>{m}</button>{isIncluded && formData.splitType === 'equal' && perPersonAmount > 0 && (<div className="ml-6 text-xs text-green-600 font-bold">{t.per_person}: {currentCurrency.symbol}{Math.round(perPersonAmount).toLocaleString()}</div>)}{isIncluded && formData.splitType === 'custom' && (<div className="ml-6 space-y-2"><input type="text" value={formData.customItemNames[m] || ''} onChange={(e) => handleCustomItemNameChange(m, e.target.value)} placeholder={t.item_name} className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-xl text-sm font-bold text-purple-700 outline-none" /><input type="number" inputMode="decimal" value={formData.customAmounts[m] || ''} onChange={(e) => handleCustomAmountChange(m, e.target.value)} placeholder="0" className="w-full px-3 py-2 bg-purple-50 border border-purple-200 rounded-xl text-sm font-bold text-purple-700 outline-none" /></div>)}</div>); })}</div>{formData.splitType === 'custom' && (<div className="mt-3 p-3 bg-purple-100 rounded-xl flex justify-between items-center"><span className="font-bold text-purple-700">{t.total_amount}</span><span className="custom-total-amount font-black text-purple-800 text-xl">{currentCurrency.symbol}{calculateCustomTotal().toLocaleString()}</span></div>)}</div>
-                                {formData.splitType === 'equal' && (<div className="flex gap-3"><div className="flex-1"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.amount}</label><input type="number" inputMode="decimal" value={formData.amount} onChange={(e) => setFormData({...formData, amount: e.target.value})} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-2xl font-black text-gray-800 outline-none" placeholder="0" /></div>{currentBook.currency !== 'TWD' && (<div className="w-28"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({...formData, exchangeRate: e.target.value})} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-xl font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}</div>)}
-                                {formData.splitType === 'custom' && currentBook.currency !== 'TWD' && (<div className="w-full"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({...formData, exchangeRate: e.target.value})} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-lg font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}
-                                <div className="grid grid-cols-3 gap-3"><div><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.date}</label><input type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} className="w-full px-2 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-800 outline-none" /></div><div className="col-span-2"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.item}</label><input type="text" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} placeholder="e.g. Dinner" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-base font-bold text-gray-800 outline-none" /></div></div>
+                                {formData.splitType === 'equal' && (<div className="flex gap-3"><div className="flex-1"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.amount}</label><input type="number" inputMode="decimal" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-2xl font-black text-gray-800 outline-none" placeholder="0" /></div>{currentBook.currency !== 'TWD' && (<div className="w-28"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })} className="w-full px-4 py-4 bg-gray-50 border-none rounded-2xl text-xl font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}</div>)}
+                                {formData.splitType === 'custom' && currentBook.currency !== 'TWD' && (<div className="w-full"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.rate_settings}</label><input type="number" inputMode="decimal" step="0.0001" value={formData.exchangeRate} onChange={(e) => setFormData({ ...formData, exchangeRate: e.target.value })} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-lg font-bold text-gray-800 outline-none" placeholder={activeRate} /></div>)}
+                                <div className="grid grid-cols-3 gap-3"><div><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.date}</label><input type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full px-2 py-3 bg-gray-50 border-none rounded-xl text-sm font-bold text-gray-800 outline-none" /></div><div className="col-span-2"><label className="text-xs font-bold text-gray-400 ml-1 mb-1 block uppercase">{t.item}</label><input type="text" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="e.g. Dinner" className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl text-base font-bold text-gray-800 outline-none" /></div></div>
                                 <button onClick={handleSave} className="w-full bg-black text-white py-4 rounded-2xl font-bold text-lg shadow-xl btn-press mt-4">{editingId ? t.update : t.confirm}</button>
                             </div>
                         )}
@@ -2892,4 +3360,5 @@
         ReactDOM.render(<CoupleExpenseApp />, document.getElementById('root'));
     </script>
 </body>
+
 </html>
