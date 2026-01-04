@@ -1484,50 +1484,28 @@
             const saveGlobalMember = () => { if (!editMemberName.trim() || !userId) return; if (editMemberName !== editingGlobalMember) db.ref('users/' + userId + '/settings/globalMembers/' + editingGlobalMember).remove(); db.ref('users/' + userId + '/settings/globalMembers/' + editMemberName.trim()).set(editMemberAvatar); setEditingGlobalMember(null); };
             const handleDeleteGlobalMember = (name) => { if (!userId) return; if (confirm(t.confirm_delete)) db.ref('users/' + userId + '/settings/globalMembers/' + name).remove(); };
 
-            // Member reorder with drag-and-drop
-            const [draggedMember, setDraggedMember] = useState(null);
-            const [dragOverMember, setDragOverMember] = useState(null);
-
-            const handleMemberDragStart = (name) => {
-                setDraggedMember(name);
-            };
-
-            const handleMemberDragOver = (e, name) => {
-                e.preventDefault();
-                if (name !== draggedMember) {
-                    setDragOverMember(name);
-                }
-            };
-
-            const handleMemberDrop = (dropName) => {
-                if (!draggedMember || draggedMember === dropName || !userId) {
-                    setDraggedMember(null);
-                    setDragOverMember(null);
-                    return;
-                }
+            // Member reorder with up/down buttons (mobile-friendly)
+            const moveMember = (name, direction) => {
+                if (!userId) return;
 
                 const entries = Object.entries(globalMembers);
-                const dragIndex = entries.findIndex(([n]) => n === draggedMember);
-                const dropIndex = entries.findIndex(([n]) => n === dropName);
+                const index = entries.findIndex(([n]) => n === name);
 
-                if (dragIndex === -1 || dropIndex === -1) return;
+                if (direction === 'up' && index <= 0) return;
+                if (direction === 'down' && index >= entries.length - 1) return;
 
-                // Remove dragged item and insert at new position
-                const [draggedItem] = entries.splice(dragIndex, 1);
-                entries.splice(dropIndex, 0, draggedItem);
+                const newIndex = direction === 'up' ? index - 1 : index + 1;
 
-                // Reconstruct object
+                // Swap positions
+                [entries[index], entries[newIndex]] = [entries[newIndex], entries[index]];
+
+                // Reconstruct object and save
                 const newMembers = {};
                 entries.forEach(([n, a]) => { newMembers[n] = a; });
-                db.ref('users/' + userId + '/settings/globalMembers').set(newMembers);
 
-                setDraggedMember(null);
-                setDragOverMember(null);
-            };
-
-            const handleMemberDragEnd = () => {
-                setDraggedMember(null);
-                setDragOverMember(null);
+                db.ref('users/' + userId + '/settings/globalMembers').set(newMembers)
+                    .then(() => console.log('Member order updated'))
+                    .catch(err => console.error('Failed to update member order:', err));
             };
 
 
@@ -2947,7 +2925,7 @@
                     </div></div>}
 
                     {/* Members Manager Modal */}
-                    {isMemberManagerOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl h-[600px] flex flex-col"><div className="flex items-center gap-2 mb-4"><button onClick={() => { setIsMemberManagerOpen(false); if (memberManagerSource === 'book') setIsSettingsOpen(true); else setIsMenuSettingsOpen(true); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h3 className="text-xl font-black text-gray-800">{t.member_mgmt}</h3><span className="text-xs text-gray-400 ml-auto">{lang === 'zh' ? '拖曳排序' : 'Drag to reorder'}</span></div><div className="flex-1 overflow-y-auto space-y-2 mb-4 no-scrollbar">{Object.entries(globalMembers).map(([name, avatar]) => (<div key={name} draggable={editingGlobalMember !== name} onDragStart={() => handleMemberDragStart(name)} onDragOver={(e) => handleMemberDragOver(e, name)} onDrop={() => handleMemberDrop(name)} onDragEnd={handleMemberDragEnd} className={`p-3 rounded-xl border transition-all cursor-move ${draggedMember === name ? 'opacity-50 bg-blue-50 border-blue-300' : dragOverMember === name ? 'bg-green-50 border-green-300 border-2' : 'bg-gray-50 border-gray-100'}`}>{editingGlobalMember === name ? (<div className="space-y-3"><div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setEditMemberAvatar(a)} className={`text-xl p-2 rounded-lg flex items-center justify-center ${editMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input value={editMemberName} onChange={e => setEditMemberName(e.target.value)} className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-2 font-bold" /><button onClick={saveGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold text-sm shrink-0">{t.save}</button></div></div>) : (<div className="flex items-center justify-between"><div className="flex items-center gap-3"><span className="text-gray-300 cursor-grab">⋮⋮</span><span className="text-2xl">{avatar}</span><span className="font-bold text-lg">{name}</span></div><div className="flex gap-1"><button onClick={() => startEditGlobalMember(name, avatar)} className="text-gray-400 hover:text-black p-2"><Icons.Edit /></button><button onClick={() => handleDeleteGlobalMember(name)} className="text-gray-400 hover:text-red-500 p-2"><Icons.Trash /></button></div></div>)}</div>))}</div><div className="border-t pt-4"><p className="text-xs font-bold text-gray-400 mb-2">{t.add_member}</p><div className="grid grid-cols-5 gap-2 mb-3 max-h-32 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setNewMemberAvatar(a)} className={`text-2xl p-2 rounded-lg flex items-center justify-center ${newMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input type="text" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder={t.name} className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 font-bold outline-none" /><button onClick={handleAddGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold shrink-0">{t.add}</button></div></div></div></div>}
+                    {isMemberManagerOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl h-[600px] flex flex-col"><div className="flex items-center gap-2 mb-4"><button onClick={() => { setIsMemberManagerOpen(false); if (memberManagerSource === 'book') setIsSettingsOpen(true); else setIsMenuSettingsOpen(true); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h3 className="text-xl font-black text-gray-800">{t.member_mgmt}</h3></div><div className="flex-1 overflow-y-auto space-y-2 mb-4 no-scrollbar">{Object.entries(globalMembers).map(([name, avatar], index, arr) => (<div key={name} className="bg-gray-50 p-3 rounded-xl border border-gray-100">{editingGlobalMember === name ? (<div className="space-y-3"><div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setEditMemberAvatar(a)} className={`text-xl p-2 rounded-lg flex items-center justify-center ${editMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input value={editMemberName} onChange={e => setEditMemberName(e.target.value)} className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-2 font-bold" /><button onClick={saveGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold text-sm shrink-0">{t.save}</button></div></div>) : (<div className="flex items-center justify-between"><div className="flex items-center gap-3"><div className="flex flex-col gap-0.5"><button onClick={() => moveMember(name, 'up')} disabled={index === 0} className={`w-6 h-5 flex items-center justify-center rounded text-xs ${index === 0 ? 'text-gray-200 bg-gray-100' : 'text-gray-500 bg-gray-200 hover:bg-blue-100 hover:text-blue-600 active:bg-blue-200'}`}>▲</button><button onClick={() => moveMember(name, 'down')} disabled={index === arr.length - 1} className={`w-6 h-5 flex items-center justify-center rounded text-xs ${index === arr.length - 1 ? 'text-gray-200 bg-gray-100' : 'text-gray-500 bg-gray-200 hover:bg-blue-100 hover:text-blue-600 active:bg-blue-200'}`}>▼</button></div><span className="text-2xl">{avatar}</span><span className="font-bold text-lg">{name}</span></div><div className="flex gap-1"><button onClick={() => startEditGlobalMember(name, avatar)} className="text-gray-400 hover:text-black p-2"><Icons.Edit /></button><button onClick={() => handleDeleteGlobalMember(name)} className="text-gray-400 hover:text-red-500 p-2"><Icons.Trash /></button></div></div>)}</div>))}</div><div className="border-t pt-4"><p className="text-xs font-bold text-gray-400 mb-2">{t.add_member}</p><div className="grid grid-cols-5 gap-2 mb-3 max-h-32 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setNewMemberAvatar(a)} className={`text-2xl p-2 rounded-lg flex items-center justify-center ${newMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input type="text" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder={t.name} className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 font-bold outline-none" /><button onClick={handleAddGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold shrink-0">{t.add}</button></div></div></div></div>}
 
 
                     {/* Book Settings Modal */}
