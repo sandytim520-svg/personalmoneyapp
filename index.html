@@ -1061,7 +1061,17 @@
 
             // 監聽結清狀態
             useEffect(() => {
-                const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
+                if (authLoading) return;
+                if (!userId && !isGuest) return;
+
+                let clearedPath;
+                if (isGuest) {
+                    clearedPath = 'publicBooks/' + currentBookId + '/clearedTransactions';
+                } else {
+                    clearedPath = currentBookId === 'default'
+                        ? 'users/' + userId + '/clearedTransactions'
+                        : 'users/' + userId + '/books/' + currentBookId + '/clearedTransactions';
+                }
                 const clearedRef = db.ref(clearedPath);
                 clearedRef.on('value', (snapshot) => {
                     const val = snapshot.val();
@@ -1069,19 +1079,38 @@
                     else setClearedTransactions({});
                 });
                 return () => clearedRef.off();
-            }, [currentBookId]);
+            }, [currentBookId, userId, authLoading, isGuest]);
 
             useEffect(() => {
-                if (currentBook.currency !== 'TWD') {
-                    fetchExchangeRate(currentBook.currency).then(rate => { if (!currentBook.customRate) db.ref('booksMeta/' + currentBookId).update({ customRate: rate }); });
+                if (currentBook.currency !== 'TWD' && userId) {
+                    fetchExchangeRate(currentBook.currency).then(rate => { if (!currentBook.customRate) db.ref('users/' + userId + '/booksMeta/' + currentBookId).update({ customRate: rate }); });
                 }
-            }, [currentBookId, currentBook.currency]);
+            }, [currentBookId, currentBook.currency, userId]);
 
             useEffect(() => {
+                if (authLoading) return;
+                if (!userId && !isGuest) return;
+
                 setLoading(true);
                 localStorage.setItem('lastBookId', currentBookId);
-                const txPath = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
-                const stPath = currentBookId === 'default' ? 'settlements' : 'books/' + currentBookId + '/settlements';
+
+                let txPath, stPath, recurringPath;
+                if (isGuest) {
+                    txPath = 'publicBooks/' + currentBookId + '/transactions';
+                    stPath = 'publicBooks/' + currentBookId + '/settlements';
+                    recurringPath = 'publicBooks/' + currentBookId + '/recurring';
+                } else {
+                    txPath = currentBookId === 'default'
+                        ? 'users/' + userId + '/transactions'
+                        : 'users/' + userId + '/books/' + currentBookId + '/transactions';
+                    stPath = currentBookId === 'default'
+                        ? 'users/' + userId + '/settlements'
+                        : 'users/' + userId + '/books/' + currentBookId + '/settlements';
+                    recurringPath = currentBookId === 'default'
+                        ? 'users/' + userId + '/recurring'
+                        : 'users/' + userId + '/books/' + currentBookId + '/recurring';
+                }
+
                 const txRef = db.ref(txPath);
                 const stRef = db.ref(stPath);
                 const handleTx = (snapshot) => {
@@ -1097,7 +1126,6 @@
                 const handleSt = (snapshot) => { const data = snapshot.val(); if (data) { const list = Object.keys(data).map(key => ({ id: key, ...data[key] })); list.sort((a, b) => b.settledAt - a.settledAt); setSettlements(list); } else setSettlements([]); };
                 txRef.on('value', handleTx); stRef.on('value', handleSt);
                 // Recurring items listener
-                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
                 const recurringRef = db.ref(recurringPath);
                 recurringRef.on('value', (snapshot) => {
                     const data = snapshot.val();
@@ -1107,17 +1135,18 @@
                     } else setRecurringItems([]);
                 });
                 return () => { txRef.off(); stRef.off(); recurringRef.off(); };
-            }, [currentBookId, activeRate, sortNewestFirst]);
+            }, [currentBookId, activeRate, sortNewestFirst, userId, authLoading, isGuest]);
 
             useEffect(() => {
+                if (!userId) return;
                 if (isPersonalBook) {
                     const currentMonth = getCurrentMonth();
                     const lastSettleMonth = currentBook.lastSettleMonth;
                     if (lastSettleMonth && lastSettleMonth !== currentMonth && transactions.length > 0) {
                         const lastMonthTxs = transactions.filter(tx => tx.date && tx.date.startsWith(lastSettleMonth));
                         if (lastMonthTxs.length > 0) {
-                            const stPath = currentBookId === 'default' ? 'settlements' : 'books/' + currentBookId + '/settlements';
-                            const txPath = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
+                            const stPath = currentBookId === 'default' ? 'users/' + userId + '/settlements' : 'users/' + userId + '/books/' + currentBookId + '/settlements';
+                            const txPath = currentBookId === 'default' ? 'users/' + userId + '/transactions' : 'users/' + userId + '/books/' + currentBookId + '/transactions';
                             let expense = 0, income = 0;
                             lastMonthTxs.forEach(tx => { if (tx.txType === 'income') income += tx.amount; else expense += tx.amount; });
                             db.ref(stPath).push({
@@ -1132,13 +1161,13 @@
                                 isAutoSettle: true
                             }).then(() => {
                                 lastMonthTxs.forEach(tx => db.ref(txPath + '/' + tx.id).remove());
-                                db.ref('booksMeta/' + currentBookId).update({ lastSettleMonth: currentMonth });
+                                db.ref('users/' + userId + '/booksMeta/' + currentBookId).update({ lastSettleMonth: currentMonth });
                             });
                         }
                     }
-                    if (!lastSettleMonth) db.ref('booksMeta/' + currentBookId).update({ lastSettleMonth: currentMonth });
+                    if (!lastSettleMonth) db.ref('users/' + userId + '/booksMeta/' + currentBookId).update({ lastSettleMonth: currentMonth });
                 }
-            }, [currentBookId, isPersonalBook, transactions]);
+            }, [currentBookId, isPersonalBook, transactions, userId]);
 
             useEffect(() => { if (!sortNewestFirst && bottomRef.current && !loading) bottomRef.current.scrollIntoView({ behavior: 'smooth' }); }, [transactions, loading, sortNewestFirst]);
 
@@ -1261,11 +1290,11 @@
             };
 
             const toggleLang = () => setLang(l => l === 'zh' ? 'en' : 'zh');
-            const handleAddGlobalMember = () => { if (!newMemberName.trim()) return; db.ref('settings/globalMembers/' + newMemberName.trim()).set(newMemberAvatar); setNewMemberName(''); };
+            const handleAddGlobalMember = () => { if (!newMemberName.trim() || !userId) return; db.ref('users/' + userId + '/settings/globalMembers/' + newMemberName.trim()).set(newMemberAvatar); setNewMemberName(''); };
             const startEditGlobalMember = (name, avatar) => { setEditingGlobalMember(name); setEditMemberName(name); setEditMemberAvatar(avatar); };
-            const saveGlobalMember = () => { if (!editMemberName.trim()) return; if (editMemberName !== editingGlobalMember) db.ref('settings/globalMembers/' + editingGlobalMember).remove(); db.ref('settings/globalMembers/' + editMemberName.trim()).set(editMemberAvatar); setEditingGlobalMember(null); };
-            const handleDeleteGlobalMember = (name) => { if (confirm(t.confirm_delete)) db.ref('settings/globalMembers/' + name).remove(); };
-            const toggleBookMember = (member) => { const isIncluded = bookMembers.includes(member); let newMembers; if (isIncluded) { if (bookMembers.length <= 2) return alert(t.alert_min_members); newMembers = bookMembers.filter(m => m !== member); } else { newMembers = [...bookMembers, member]; } db.ref('booksMeta/' + currentBookId).update({ members: newMembers }); };
+            const saveGlobalMember = () => { if (!editMemberName.trim() || !userId) return; if (editMemberName !== editingGlobalMember) db.ref('users/' + userId + '/settings/globalMembers/' + editingGlobalMember).remove(); db.ref('users/' + userId + '/settings/globalMembers/' + editMemberName.trim()).set(editMemberAvatar); setEditingGlobalMember(null); };
+            const handleDeleteGlobalMember = (name) => { if (!userId) return; if (confirm(t.confirm_delete)) db.ref('users/' + userId + '/settings/globalMembers/' + name).remove(); };
+            const toggleBookMember = (member) => { if (!userId) return; const isIncluded = bookMembers.includes(member); let newMembers; if (isIncluded) { if (bookMembers.length <= 2) return alert(t.alert_min_members); newMembers = bookMembers.filter(m => m !== member); } else { newMembers = [...bookMembers, member]; } db.ref('users/' + userId + '/booksMeta/' + currentBookId).update({ members: newMembers }); };
 
             // Recurring transactions functions
             const openRecurringForm = (item = null) => {
@@ -1289,8 +1318,10 @@
                 setIsRecurringFormOpen(true);
             };
             const saveRecurring = () => {
-                if (!recurringForm.name.trim() || !recurringForm.amount) return alert(t.alert_input);
-                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                if (!recurringForm.name.trim() || !recurringForm.amount || !userId) return alert(t.alert_input);
+                const recurringPath = currentBookId === 'default'
+                    ? 'users/' + userId + '/recurring'
+                    : 'users/' + userId + '/books/' + currentBookId + '/recurring';
                 const data = {
                     name: recurringForm.name.trim(),
                     amount: parseFloat(recurringForm.amount),
@@ -1320,12 +1351,17 @@
                 setEditingRecurring(null);
             };
             const deleteRecurring = (id) => {
-                if (!confirm(t.confirm_delete_recurring)) return;
-                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                if (!confirm(t.confirm_delete_recurring) || !userId) return;
+                const recurringPath = currentBookId === 'default'
+                    ? 'users/' + userId + '/recurring'
+                    : 'users/' + userId + '/books/' + currentBookId + '/recurring';
                 db.ref(recurringPath + '/' + id).remove();
             };
             const toggleRecurringActive = (id, currentActive) => {
-                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                if (!userId) return;
+                const recurringPath = currentBookId === 'default'
+                    ? 'users/' + userId + '/recurring'
+                    : 'users/' + userId + '/books/' + currentBookId + '/recurring';
                 db.ref(recurringPath + '/' + id).update({ isActive: !currentActive });
             };
             const getIntervalLabel = (item) => {
@@ -1334,10 +1370,10 @@
             };
             // Generate recurring transactions
             useEffect(() => {
-                if (!recurringItems.length || loading) return;
+                if (!recurringItems.length || loading || !userId) return;
                 const today = new Date().toISOString().split('T')[0];
-                const txPath = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
-                const recurringPath = currentBookId === 'default' ? 'recurring' : 'books/' + currentBookId + '/recurring';
+                const txPath = currentBookId === 'default' ? 'users/' + userId + '/transactions' : 'users/' + userId + '/books/' + currentBookId + '/transactions';
+                const recurringPath = currentBookId === 'default' ? 'users/' + userId + '/recurring' : 'users/' + userId + '/books/' + currentBookId + '/recurring';
 
                 recurringItems.forEach(item => {
                     if (!item.isActive) return;
@@ -1386,7 +1422,7 @@
             const openAddBookModal = () => { setAddBookStep(1); setNewBookType('shared'); setNewBookName(''); setNewBookCurrency('TWD'); setNewBookOwner(''); setSelectedMembers([]); setIsAddBookOpen(true); };
 
             const handleCreateBook = () => {
-                if (!newBookName) return alert(t.alert_input);
+                if (!newBookName || !userId) return alert(t.alert_input);
                 if (newBookType === 'shared' && selectedMembers.length < 2) return alert(t.alert_min_members);
                 if (newBookType === 'personal' && !newBookOwner) return alert(t.alert_input);
                 const newId = 'book_' + Date.now();
@@ -1406,7 +1442,7 @@
                 }
                 fetchExchangeRate(newBookCurrency).then(rate => {
                     bookData.customRate = rate;
-                    db.ref('booksMeta/' + newId).set(bookData).then(() => {
+                    db.ref('users/' + userId + '/booksMeta/' + newId).set(bookData).then(() => {
                         setCurrentBookId(newId);
                         setIsAddBookOpen(false);
                         setIsMenuOpen(false);
@@ -1418,34 +1454,34 @@
 
             const handleDeleteBook = (bookId, e) => {
                 e.stopPropagation();
-                if (bookId === 'default') return alert('Default ledger cannot be deleted.');
+                if (bookId === 'default' || !userId) return alert('Default ledger cannot be deleted.');
                 if (confirm(t.confirm_delete)) {
                     const bookMeta = booksMeta[bookId];
-                    db.ref('deletedBooks/' + bookId).set({ ...bookMeta, deletedAt: Date.now() });
-                    db.ref('books/' + bookId).once('value', snapshot => { const bookData = snapshot.val(); if (bookData) db.ref('deletedBooksData/' + bookId).set(bookData); });
-                    db.ref('booksMeta/' + bookId).remove();
-                    db.ref('books/' + bookId).remove();
+                    db.ref('users/' + userId + '/deletedBooks/' + bookId).set({ ...bookMeta, deletedAt: Date.now() });
+                    db.ref('users/' + userId + '/books/' + bookId).once('value', snapshot => { const bookData = snapshot.val(); if (bookData) db.ref('users/' + userId + '/deletedBooksData/' + bookId).set(bookData); });
+                    db.ref('users/' + userId + '/booksMeta/' + bookId).remove();
+                    db.ref('users/' + userId + '/books/' + bookId).remove();
                     if (currentBookId === bookId) setCurrentBookId('default');
                 }
             };
 
             const handleRestoreBook = (bookId) => {
-                if (!confirm(t.confirm_restore)) return;
+                if (!confirm(t.confirm_restore) || !userId) return;
                 const bookMeta = deletedBooks[bookId];
                 if (!bookMeta) return;
                 const { deletedAt, ...restoreMeta } = bookMeta;
-                db.ref('booksMeta/' + bookId).set(restoreMeta);
-                db.ref('deletedBooksData/' + bookId).once('value', snapshot => { const bookData = snapshot.val(); if (bookData) db.ref('books/' + bookId).set(bookData); });
-                db.ref('deletedBooks/' + bookId).remove();
-                db.ref('deletedBooksData/' + bookId).remove();
+                db.ref('users/' + userId + '/booksMeta/' + bookId).set(restoreMeta);
+                db.ref('users/' + userId + '/deletedBooksData/' + bookId).once('value', snapshot => { const bookData = snapshot.val(); if (bookData) db.ref('users/' + userId + '/books/' + bookId).set(bookData); });
+                db.ref('users/' + userId + '/deletedBooks/' + bookId).remove();
+                db.ref('users/' + userId + '/deletedBooksData/' + bookId).remove();
                 setIsDeletedBooksOpen(false);
             };
 
             const handlePermanentDeleteBook = (bookId, e) => {
                 e.stopPropagation();
-                if (!confirm(t.confirm_perm_delete)) return;
-                db.ref('deletedBooks/' + bookId).remove();
-                db.ref('deletedBooksData/' + bookId).remove();
+                if (!confirm(t.confirm_perm_delete) || !userId) return;
+                db.ref('users/' + userId + '/deletedBooks/' + bookId).remove();
+                db.ref('users/' + userId + '/deletedBooksData/' + bookId).remove();
             };
 
             const getDaysLeft = (deletedAt) => {
@@ -1456,12 +1492,25 @@
             };
 
             const startEditBook = (id, currentName, e) => { e.stopPropagation(); setEditingBookId(id); setTempBookName(currentName); };
-            const saveBookName = (id, e) => { e.stopPropagation(); if (!tempBookName.trim()) return; db.ref('booksMeta/' + id).update({ name: tempBookName }); setEditingBookId(null); };
-            const handleUpdateGlobalRate = () => { if (!newRate) return; const rate = parseFloat(newRate); db.ref('booksMeta/' + currentBookId).update({ customRate: rate }); if (confirm(t.confirm_update + "?")) { const path = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions'; const updates = {}; transactions.forEach(tx => { updates[path + '/' + tx.id + '/exchangeRate'] = rate; updates[path + '/' + tx.id + '/amountTWD'] = Math.round(tx.amount * rate); }); if (Object.keys(updates).length > 0) db.ref().update(updates); } setIsRateModalOpen(false); };
+            const saveBookName = (id, e) => { e.stopPropagation(); if (!tempBookName.trim() || !userId) return; db.ref('users/' + userId + '/booksMeta/' + id).update({ name: tempBookName }); setEditingBookId(null); };
+            const handleUpdateGlobalRate = () => { if (!newRate || !userId) return; const rate = parseFloat(newRate); db.ref('users/' + userId + '/booksMeta/' + currentBookId).update({ customRate: rate }); if (confirm(t.confirm_update + "?")) { const path = currentBookId === 'default' ? 'users/' + userId + '/transactions' : 'users/' + userId + '/books/' + currentBookId + '/transactions'; const updates = {}; transactions.forEach(tx => { updates[path + '/' + tx.id + '/exchangeRate'] = rate; updates[path + '/' + tx.id + '/amountTWD'] = Math.round(tx.amount * rate); }); if (Object.keys(updates).length > 0) db.ref().update(updates); } setIsRateModalOpen(false); };
             const handleRefreshRate = async () => { const rate = await fetchExchangeRate(currentBook.currency); setNewRate(rate); alert(t.fetched_rate + ': ' + rate); };
 
             const handleSave = () => {
-                if (!formData.description) return alert(t.alert_input);
+                if (!formData.description || (!userId && !isGuest)) return alert(t.alert_input);
+
+                // Determine the path based on mode
+                let path;
+                if (isGuest) {
+                    path = 'publicBooks/' + currentBookId + '/transactions';
+                } else if (isPersonalBook) {
+                    path = 'users/' + userId + '/books/' + currentBookId + '/transactions';
+                } else {
+                    path = currentBookId === 'default'
+                        ? 'users/' + userId + '/transactions'
+                        : 'users/' + userId + '/books/' + currentBookId + '/transactions';
+                }
+
                 if (isPersonalBook) {
                     if (!formData.amount) return alert(t.alert_input);
                     const amount = parseFloat(formData.amount);
@@ -1477,7 +1526,6 @@
                         txType: formData.txType,
                         payer: currentBook.owner
                     };
-                    const path = 'books/' + currentBookId + '/transactions';
                     if (editingId) db.ref(path).child(editingId).update(payload);
                     else db.ref(path).push({ ...payload, createdAt: firebase.database.ServerValue.TIMESTAMP });
                 } else {
@@ -1488,20 +1536,31 @@
                     else { totalAmount = calculateCustomTotal(); if (totalAmount <= 0) return alert(t.alert_input); }
                     const rate = formData.exchangeRate ? parseFloat(formData.exchangeRate) : activeRate;
                     const payload = { ...formData, amount: totalAmount, currency: currentBook.currency, exchangeRate: rate, amountTWD: Math.round(totalAmount * rate), customItems: formData.splitType === 'custom' ? formData.customItems : {} };
-                    const path = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
                     if (editingId) db.ref(path).child(editingId).update(payload);
                     else db.ref(path).push({ ...payload, createdAt: firebase.database.ServerValue.TIMESTAMP });
                 }
                 closeModal();
             };
 
-            const handleDelete = (id) => { if (confirm(t.confirm_delete)) { const path = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions'; db.ref(path).child(id).remove(); } };
+            const handleDelete = (id) => {
+                if (confirm(t.confirm_delete)) {
+                    let path;
+                    if (isGuest) {
+                        path = 'publicBooks/' + currentBookId + '/transactions';
+                    } else {
+                        path = currentBookId === 'default'
+                            ? 'users/' + userId + '/transactions'
+                            : 'users/' + userId + '/books/' + currentBookId + '/transactions';
+                    }
+                    db.ref(path).child(id).remove();
+                }
+            };
 
             const handleSettleUp = () => {
-                if (transactions.length === 0) return;
+                if (transactions.length === 0 || !userId) return;
                 if (!confirm(t.confirm_settle)) return;
-                const stPath = currentBookId === 'default' ? 'settlements' : 'books/' + currentBookId + '/settlements';
-                const txPath = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
+                const stPath = currentBookId === 'default' ? 'users/' + userId + '/settlements' : 'users/' + userId + '/books/' + currentBookId + '/settlements';
+                const txPath = currentBookId === 'default' ? 'users/' + userId + '/transactions' : 'users/' + userId + '/books/' + currentBookId + '/transactions';
                 if (isPersonalBook) {
                     const stats = getMonthlyStats();
                     db.ref(stPath).push({
@@ -1598,7 +1657,10 @@
 
             // 結清/取消結清交易
             const toggleClearTransaction = (txId, me, other) => {
-                const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
+                if (!userId) return;
+                const clearedPath = currentBookId === 'default'
+                    ? 'users/' + userId + '/clearedTransactions'
+                    : 'users/' + userId + '/books/' + currentBookId + '/clearedTransactions';
                 const clearKey = `${txId}_${me}_${other}`;
                 const reverseKey = `${txId}_${other}_${me}`;
 
@@ -1620,7 +1682,10 @@
 
             // 結清某筆交易
             const clearTransaction = (txId, me, other) => {
-                const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
+                if (!userId) return;
+                const clearedPath = currentBookId === 'default'
+                    ? 'users/' + userId + '/clearedTransactions'
+                    : 'users/' + userId + '/books/' + currentBookId + '/clearedTransactions';
                 const clearKey = `${txId}_${me}_${other}`;
                 const reverseKey = `${txId}_${other}_${me}`;
                 const clearData = {
@@ -1634,7 +1699,10 @@
 
             // 取消結清某筆交易
             const unclearTransaction = (txId, me, other) => {
-                const clearedPath = currentBookId === 'default' ? 'clearedTransactions' : 'books/' + currentBookId + '/clearedTransactions';
+                if (!userId) return;
+                const clearedPath = currentBookId === 'default'
+                    ? 'users/' + userId + '/clearedTransactions'
+                    : 'users/' + userId + '/books/' + currentBookId + '/clearedTransactions';
                 const clearKey = `${txId}_${me}_${other}`;
                 const reverseKey = `${txId}_${other}_${me}`;
                 db.ref(clearedPath + '/' + clearKey).remove();
