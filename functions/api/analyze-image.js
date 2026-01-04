@@ -118,59 +118,83 @@ Categories: food, transport, groceries, shopping, entertainment, health, educati
 
 If no transactions visible, return: []`;
 
-        // List of free vision models to try via OpenRouter (in order of preference)
-        const freeModels = [
-            'qwen/qwen2.5-vl-72b-instruct:free',
-            'meta-llama/llama-4-maverick:free',
-            'google/gemma-3-27b-it:free',
-            'google/gemini-2.0-flash-exp:free'
+        // Interleaved list of models from different providers (alternating to avoid single provider dependency)
+        const modelProviders = [
+            { provider: 'openrouter', model: 'qwen/qwen2.5-vl-72b-instruct:free' },
+            { provider: 'groq', model: 'llama-3.2-90b-vision-preview' },
+            { provider: 'openrouter', model: 'meta-llama/llama-4-maverick:free' },
+            { provider: 'groq', model: 'llama-3.2-11b-vision-preview' },
+            { provider: 'openrouter', model: 'google/gemma-3-27b-it:free' },
+            { provider: 'openrouter', model: 'google/gemini-2.0-flash-exp:free' }
         ];
 
         let lastError = null;
 
-        // Try OpenRouter models first
-        for (const model of freeModels) {
-            console.log(`Trying OpenRouter model: ${model}`);
+        // Try models from interleaved providers
+        for (const { provider, model } of modelProviders) {
+            // Skip if API key not available for this provider
+            if (provider === 'openrouter' && !env.OPENROUTER_API_KEY) continue;
+            if (provider === 'groq' && !env.GROQ_API_KEY) continue;
+
+            console.log(`Trying ${provider} model: ${model}`);
 
             try {
-                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
-                        'HTTP-Referer': 'https://personalmoneyapp.pages.dev',
-                        'X-Title': 'Personal Money App'
-                    },
-                    body: JSON.stringify({
-                        model: model,
-                        messages: [
-                            {
-                                role: 'user',
-                                content: [
-                                    {
-                                        type: 'text',
-                                        text: systemPrompt
-                                    },
-                                    {
-                                        type: 'image_url',
-                                        image_url: {
-                                            url: imageUrl
-                                        }
-                                    }
-                                ]
-                            }
-                        ],
-                        temperature: 0.1,
-                        max_tokens: 2000
-                    })
-                });
+                let response;
 
-                if (response.ok) {
+                if (provider === 'openrouter') {
+                    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+                            'HTTP-Referer': 'https://personalmoneyapp.pages.dev',
+                            'X-Title': 'Personal Money App'
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: [
+                                        { type: 'text', text: systemPrompt },
+                                        { type: 'image_url', image_url: { url: imageUrl } }
+                                    ]
+                                }
+                            ],
+                            temperature: 0.1,
+                            max_tokens: 2000
+                        })
+                    });
+                } else if (provider === 'groq') {
+                    response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${env.GROQ_API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [
+                                {
+                                    role: 'user',
+                                    content: [
+                                        { type: 'text', text: systemPrompt },
+                                        { type: 'image_url', image_url: { url: imageUrl } }
+                                    ]
+                                }
+                            ],
+                            temperature: 0.1,
+                            max_tokens: 2000
+                        })
+                    });
+                }
+
+                if (response && response.ok) {
                     const data = await response.json();
 
                     if (data.choices && data.choices[0] && data.choices[0].message) {
                         const content = data.choices[0].message.content;
-                        console.log(`Success with ${model}:`, content);
+                        console.log(`✅ Success with ${provider}/${model}:`, content);
 
                         const transactions = parseTransactions(content, members);
 
@@ -178,89 +202,23 @@ If no transactions visible, return: []`;
                             success: transactions.length > 0,
                             transactions: transactions,
                             count: transactions.length,
-                            source: model
+                            source: `${provider}/${model}`
                         }), {
                             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
                         });
                     }
-                } else {
+                } else if (response) {
                     const errorText = await response.text();
-                    console.log(`Model ${model} failed:`, response.status, errorText);
-                    lastError = { status: response.status, text: errorText };
+                    console.log(`❌ ${provider}/${model} failed:`, response.status, errorText);
+                    lastError = { status: response.status, text: errorText, provider, model };
 
-                    // If rate limited, try next model
-                    if (response.status === 429) {
-                        continue;
-                    }
+                    // If rate limited or error, try next model
+                    continue;
                 }
             } catch (modelError) {
-                console.error(`Error with ${model}:`, modelError);
-                lastError = { message: modelError.message };
+                console.error(`❌ Error with ${provider}/${model}:`, modelError);
+                lastError = { message: modelError.message, provider, model };
                 continue;
-            }
-        }
-
-        // Fallback to Groq API if all OpenRouter models failed
-        if (env.GROQ_API_KEY) {
-            console.log('Trying Groq API as fallback...');
-
-            try {
-                const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${env.GROQ_API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        model: 'llama-3.2-90b-vision-preview',
-                        messages: [
-                            {
-                                role: 'user',
-                                content: [
-                                    {
-                                        type: 'text',
-                                        text: systemPrompt
-                                    },
-                                    {
-                                        type: 'image_url',
-                                        image_url: {
-                                            url: imageUrl
-                                        }
-                                    }
-                                ]
-                            }
-                        ],
-                        temperature: 0.1,
-                        max_tokens: 2000
-                    })
-                });
-
-                if (groqResponse.ok) {
-                    const groqData = await groqResponse.json();
-
-                    if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
-                        const content = groqData.choices[0].message.content;
-                        console.log('Success with Groq:', content);
-
-                        const transactions = parseTransactions(content, members);
-
-                        return new Response(JSON.stringify({
-                            success: transactions.length > 0,
-                            transactions: transactions,
-                            count: transactions.length,
-                            source: 'groq-llama-3.2-90b-vision'
-                        }), {
-                            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                        });
-                    }
-                } else {
-                    const groqError = await groqResponse.text();
-                    console.log('Groq failed:', groqResponse.status, groqError);
-                    lastError = { status: groqResponse.status, text: groqError, provider: 'groq' };
-                }
-            } catch (groqError) {
-                console.error('Groq error:', groqError);
-                lastError = { message: groqError.message, provider: 'groq' };
             }
         }
 
