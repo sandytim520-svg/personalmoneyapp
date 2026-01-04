@@ -2,8 +2,8 @@
   "rules": {
     "users": {
       "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
+        ".read": "auth != null && $uid === auth.uid || $uid.beginsWith('local_')",
+        ".write": "auth != null && $uid === auth.uid || $uid.beginsWith('local_')"
       }
     },
     "publicBooks": {

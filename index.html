@@ -893,6 +893,16 @@
                     return () => publicBooksRef.off();
                 }
 
+                // Helper function to generate UUID fallback
+                const generateLocalUserId = () => {
+                    let localId = localStorage.getItem('localUserId');
+                    if (!localId) {
+                        localId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                        localStorage.setItem('localUserId', localId);
+                    }
+                    return localId;
+                };
+
                 // Owner mode: Anonymous sign in
                 const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
                     if (user) {
@@ -901,13 +911,35 @@
                         setAuthLoading(false);
                     } else {
                         // Try to sign in anonymously
-                        firebase.auth().signInAnonymously().catch((error) => {
-                            console.error('Anonymous auth error:', error);
-                            setAuthLoading(false);
-                        });
+                        firebase.auth().signInAnonymously()
+                            .then((result) => {
+                                // Success - onAuthStateChanged will handle setting userId
+                            })
+                            .catch((error) => {
+                                console.error('Anonymous auth error:', error);
+                                // Fallback: use local storage userId if auth fails
+                                const fallbackId = generateLocalUserId();
+                                console.log('Using fallback userId:', fallbackId);
+                                setUserId(fallbackId);
+                                setAuthLoading(false);
+                            });
                     }
                 });
-                return () => unsubscribe();
+
+                // Set a timeout fallback in case auth is slow or fails silently
+                const timeoutId = setTimeout(() => {
+                    if (!userId) {
+                        const fallbackId = generateLocalUserId();
+                        console.log('Auth timeout, using fallback userId:', fallbackId);
+                        setUserId(fallbackId);
+                        setAuthLoading(false);
+                    }
+                }, 3000);
+
+                return () => {
+                    unsubscribe();
+                    clearTimeout(timeoutId);
+                };
             }, [isGuest, shareUserId]);
 
             // Helper function to get data path based on public/private status
