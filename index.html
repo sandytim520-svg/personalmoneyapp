@@ -860,15 +860,21 @@
             const [authLoading, setAuthLoading] = useState(true);
             const [isGuest, setIsGuest] = useState(false);
             const [shareUserId, setShareUserId] = useState(null);
+            const [shareBookId, setShareBookId] = useState(null);
             const [publicBooks, setPublicBooks] = useState({});
 
             // Check URL for share parameter
             useEffect(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const shareParam = urlParams.get('share');
+                const bookParam = urlParams.get('book');
                 if (shareParam) {
                     setShareUserId(shareParam);
                     setIsGuest(true);
+                    if (bookParam) {
+                        setShareBookId(bookParam);
+                        setCurrentBookId(bookParam);
+                    }
                 }
             }, []);
 
@@ -934,7 +940,7 @@
 
             // Copy share link to clipboard
             const copyShareLink = () => {
-                const link = window.location.origin + '?share=' + userId;
+                const link = window.location.origin + '?share=' + userId + '&book=' + currentBookId;
                 navigator.clipboard.writeText(link).then(() => {
                     alert(t.link_copied);
                 }).catch(err => {
@@ -946,8 +952,25 @@
             // Firebase Auth State Listener
             useEffect(() => {
                 if (isGuest && shareUserId) {
-                    // Guest mode: load public books of the shared user
+                    // Guest mode: load public books
                     setAuthLoading(false);
+
+                    // If specific book ID is provided, load just that book
+                    if (shareBookId) {
+                        const bookRef = db.ref('publicBooks/' + shareBookId);
+                        bookRef.on('value', (snapshot) => {
+                            const val = snapshot.val();
+                            if (val) {
+                                setPublicBooks({ [shareBookId]: val });
+                                setCurrentBookId(shareBookId);
+                            } else {
+                                setPublicBooks({});
+                            }
+                        });
+                        return () => bookRef.off();
+                    }
+
+                    // Fallback: load all public books by owner
                     const publicBooksRef = db.ref('publicBooks');
                     publicBooksRef.orderByChild('ownerId').equalTo(shareUserId).on('value', (snapshot) => {
                         const val = snapshot.val();
@@ -2643,6 +2666,34 @@
                                     </div>
                                 )}
                             </div>
+
+                            {/* Open Book Toggle */}
+                            {!isGuest && (
+                                <div className="bg-white rounded-2xl p-4 shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="font-bold text-gray-800 flex items-center gap-2">
+                                                <span>🌐</span> {t.open_book}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">{t.open_book_desc}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => togglePublicBook(currentBookId)}
+                                            className={`w-12 h-7 rounded-full transition-all relative ${currentBook.isPublic ? 'bg-green-500' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${currentBook.isPublic ? 'right-1' : 'left-1'}`}></div>
+                                        </button>
+                                    </div>
+                                    {currentBook.isPublic && (
+                                        <button
+                                            onClick={copyShareLink}
+                                            className="w-full mt-3 bg-green-500 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                                        >
+                                            🔗 {t.copy_link}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
 
                             {/* History Button */}
                             <button onClick={() => { setIsHistoryOpen(true); setIsSettingsOpen(false); setViewingSettlement(null); setIsExportMode(false); setSelectedSettlements([]); }} className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
