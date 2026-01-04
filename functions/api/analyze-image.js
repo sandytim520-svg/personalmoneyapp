@@ -76,7 +76,7 @@ export async function onRequest(context) {
                 'X-Title': 'Personal Money App'
             },
             body: JSON.stringify({
-                model: 'google/gemini-2.0-flash-exp:free',
+                model: 'qwen/qwen-2.5-vl-72b-instruct:free',
                 messages: [
                     {
                         role: 'user',
