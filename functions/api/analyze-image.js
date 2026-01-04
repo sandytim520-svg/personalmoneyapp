@@ -33,9 +33,9 @@ export async function onRequest(context) {
     }
 
     try {
-        if (!env.GROQ_API_KEY) {
+        if (!env.OPENROUTER_API_KEY) {
             return new Response(JSON.stringify({
-                error: 'GROQ_API_KEY not configured',
+                error: 'OPENROUTER_API_KEY not configured',
                 success: false,
                 transactions: []
             }), {
@@ -66,15 +66,17 @@ export async function onRequest(context) {
         const memberListStr = members && members.length > 0 ? members.join(', ') : 'No specific members provided';
         const currencyStr = currency || 'TWD';
 
-        // Call Groq API (High Speed + Vision)
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        // Call OpenRouter API with free model
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${env.GROQ_API_KEY}`,
-                'Content-Type': 'application/json'
+                'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://personalmoneyapp.pages.dev',
+                'X-Title': 'Personal Money App'
             },
             body: JSON.stringify({
-                model: 'llama-3.2-90b-vision-instruct',
+                model: 'nvidia/nemotron-nano-12b-v2-vl:free',
                 messages: [
                     {
                         role: 'user',
