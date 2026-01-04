@@ -1081,12 +1081,17 @@
                             if (val) {
                                 setPublicBooks({ [shareBookId]: val });
                                 setCurrentBookId(shareBookId);
+                                // Set globalMembers from the public book data for guest mode
+                                if (val.globalMembers) {
+                                    setGlobalMembers(val.globalMembers);
+                                }
                             } else {
                                 setPublicBooks({});
                             }
                         });
                         return () => bookRef.off();
                     }
+
 
                     // Fallback: load all public books by owner
                     const publicBooksRef = db.ref('publicBooks');
@@ -1098,10 +1103,16 @@
                             if (firstBookId && !val[currentBookId]) {
                                 setCurrentBookId(firstBookId);
                             }
+                            // Set globalMembers from the first public book's data for guest mode
+                            const bookToUse = val[currentBookId] || val[firstBookId];
+                            if (bookToUse && bookToUse.globalMembers) {
+                                setGlobalMembers(bookToUse.globalMembers);
+                            }
                         } else {
                             setPublicBooks({});
                         }
                     });
+
                     return () => publicBooksRef.off();
                 }
 
@@ -1147,10 +1158,14 @@
                 return 'users/' + userId + '/' + path;
             };
 
-            const currentBook = booksMeta[currentBookId] || { name: t.default_book, currency: 'TWD', customRate: 1, members: ['慧欣', '俊廷'], isPersonal: false };
+            // For guest mode, use publicBooks data; for normal mode, use booksMeta
+            const currentBook = (isGuest ? publicBooks[currentBookId] : booksMeta[currentBookId]) || { name: t.default_book, currency: 'TWD', customRate: 1, members: ['慧欣', '俊廷'], isPersonal: false };
             const isPersonalBook = currentBook.isPersonal || false;
-            const validBookMembers = (currentBook.members || []).filter(m => globalMembers.hasOwnProperty(m));
-            const bookMembers = validBookMembers.length > 0 ? validBookMembers : Object.keys(globalMembers).slice(0, 2);
+
+            // For guests, use globalMembers from publicBooks if available
+            const effectiveGlobalMembers = isGuest && currentBook.globalMembers ? currentBook.globalMembers : globalMembers;
+            const validBookMembers = (currentBook.members || []).filter(m => effectiveGlobalMembers.hasOwnProperty(m));
+            const bookMembers = validBookMembers.length > 0 ? validBookMembers : Object.keys(effectiveGlobalMembers).slice(0, 2);
             const currentCurrency = CURRENCIES.find(c => c.code === currentBook.currency) || CURRENCIES[0];
             const activeRate = currentBook.customRate || currentCurrency.rate || 1;
 
