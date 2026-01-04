@@ -894,6 +894,55 @@
                 }
             };
 
+            // Toggle public book (enable/disable sharing)
+            const togglePublicBook = async (bookId) => {
+                if (!userId) return;
+                const book = booksMeta[bookId];
+                if (!book) return;
+
+                const isCurrentlyPublic = book.isPublic || false;
+
+                if (isCurrentlyPublic) {
+                    // Make private: remove from publicBooks
+                    await db.ref('publicBooks/' + bookId).remove();
+                    await db.ref('users/' + userId + '/booksMeta/' + bookId).update({ isPublic: false });
+                } else {
+                    // Make public: copy to publicBooks
+                    const publicBookData = {
+                        ...book,
+                        isPublic: true,
+                        ownerId: userId,
+                        globalMembers: globalMembers
+                    };
+
+                    // Copy book meta
+                    await db.ref('publicBooks/' + bookId).set(publicBookData);
+
+                    // Copy transactions
+                    const txPath = bookId === 'default'
+                        ? 'users/' + userId + '/transactions'
+                        : 'users/' + userId + '/books/' + bookId + '/transactions';
+                    const txSnapshot = await db.ref(txPath).once('value');
+                    if (txSnapshot.val()) {
+                        await db.ref('publicBooks/' + bookId + '/transactions').set(txSnapshot.val());
+                    }
+
+                    // Update booksMeta
+                    await db.ref('users/' + userId + '/booksMeta/' + bookId).update({ isPublic: true });
+                }
+            };
+
+            // Copy share link to clipboard
+            const copyShareLink = () => {
+                const link = window.location.origin + '?share=' + userId;
+                navigator.clipboard.writeText(link).then(() => {
+                    alert(t.link_copied);
+                }).catch(err => {
+                    console.error('Failed to copy:', err);
+                    prompt('Copy this link:', link);
+                });
+            };
+
             // Firebase Auth State Listener
             useEffect(() => {
                 if (isGuest && shareUserId) {
@@ -1267,52 +1316,6 @@
             const hasActiveFilters = isPersonalBook
                 ? (activeFilters.category || activeFilters.txType || (activeFilters.dateType && activeFilters.dateType !== 'none'))
                 : (activeFilters.payer || activeFilters.payee || (activeFilters.dateType && activeFilters.dateType !== 'none'));
-
-            // Toggle public/private book
-            const togglePublicBook = async (bookId) => {
-                if (!userId) return;
-                const book = booksMeta[bookId];
-                if (!book) return;
-
-                const isCurrentlyPublic = book.isPublic || false;
-                const userBookMetaRef = db.ref('users/' + userId + '/booksMeta/' + bookId);
-
-                if (isCurrentlyPublic) {
-                    // Make private: remove from publicBooks and update meta
-                    await db.ref('publicBooks/' + bookId).remove();
-                    await userBookMetaRef.update({ isPublic: false });
-                } else {
-                    // Make public: copy book data to publicBooks
-                    const bookData = {
-                        meta: { ...book, isPublic: true },
-                        ownerId: userId
-                    };
-
-                    // Copy transactions
-                    const txPath = bookId === 'default' ? 'users/' + userId + '/transactions' : 'users/' + userId + '/books/' + bookId + '/transactions';
-                    const txSnapshot = await db.ref(txPath).once('value');
-                    if (txSnapshot.val()) {
-                        bookData.transactions = txSnapshot.val();
-                    }
-
-                    // Copy settlements
-                    const stPath = bookId === 'default' ? 'users/' + userId + '/settlements' : 'users/' + userId + '/books/' + bookId + '/settlements';
-                    const stSnapshot = await db.ref(stPath).once('value');
-                    if (stSnapshot.val()) {
-                        bookData.settlements = stSnapshot.val();
-                    }
-
-                    // Copy recurring
-                    const recPath = bookId === 'default' ? 'users/' + userId + '/recurring' : 'users/' + userId + '/books/' + bookId + '/recurring';
-                    const recSnapshot = await db.ref(recPath).once('value');
-                    if (recSnapshot.val()) {
-                        bookData.recurring = recSnapshot.val();
-                    }
-
-                    await db.ref('publicBooks/' + bookId).set(bookData);
-                    await userBookMetaRef.update({ isPublic: true });
-                }
-            };
 
             const toggleLang = () => setLang(l => l === 'zh' ? 'en' : 'zh');
             const handleAddGlobalMember = () => { if (!newMemberName.trim() || !userId) return; db.ref('users/' + userId + '/settings/globalMembers/' + newMemberName.trim()).set(newMemberAvatar); setNewMemberName(''); };
@@ -2511,6 +2514,34 @@
                             <button onClick={toggleLang} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200"><Icons.Lang /> {t.lang_btn}</button>
                             <button onClick={() => { setIsDeletedBooksOpen(true); setIsMenuSettingsOpen(false); }} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200"><Icons.Trash /> {t.recently_deleted} {Object.keys(deletedBooks).length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{Object.keys(deletedBooks).length}</span>}</button>
                         </div>
+
+                        {/* Open Book Toggle */}
+                        {!isGuest && (
+                            <div className="mt-4 p-4 bg-gray-50 rounded-2xl">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="font-bold text-gray-800 flex items-center gap-2">
+                                            <span>🌐</span> {t.open_book}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">{t.open_book_desc}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => togglePublicBook(currentBookId)}
+                                        className={`w-12 h-7 rounded-full transition-all relative ${currentBook.isPublic ? 'bg-green-500' : 'bg-gray-300'}`}
+                                    >
+                                        <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${currentBook.isPublic ? 'right-1' : 'left-1'}`}></div>
+                                    </button>
+                                </div>
+                                {currentBook.isPublic && (
+                                    <button
+                                        onClick={copyShareLink}
+                                        className="w-full mt-3 bg-green-500 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
+                                    >
+                                        🔗 {t.copy_link}
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
                         {/* User Profile & Sign Out */}
                         {userInfo && (
