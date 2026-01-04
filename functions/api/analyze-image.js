@@ -87,16 +87,14 @@ export async function onRequest(context) {
 Valid Members for this ledger: [${memberListStr}]
 Currency: ${currencyStr}
 
-USER INSTRUCTIONS (VERY IMPORTANT): 
-"${prompt || 'No specific instructions'}"
+USER INSTRUCTIONS: 
+"${prompt || 'None'}"
 
 Task:
-1. Extract visible transactions.
-2. IF the USER INSTRUCTIONS specify who paid (e.g., "A付", "Bob paid"), set 'payer' accordingly. Default to first member if unknown.
-3. IF the USER INSTRUCTIONS specify a split (e.g., "AB分", "Split between A and B"), set 'involved' array accordingly.
-4. IF the USER INSTRUCTIONS specify a rename (e.g., "Item is Mop"), use that for 'description'.
+1. Extract visible transactions (date, merchant, amount).
+2. Apply USER INSTRUCTIONS to modify 'payer', 'involved' list, or 'description' if specified.
+3. If no user instructions, use defaults (payer=unknown, split=equal).
 
-Return JSON Array ONLY:
 [{
   "date": "YYYY-MM-DD",
   "description": "Item Name", 
@@ -106,7 +104,13 @@ Return JSON Array ONLY:
   "payer": "MemberName",
   "involved": ["MemberA", "MemberB"],
   "splitType": "equal"
-}]`
+}]
+
+IMPORTANT:
+- First, extract the transaction details from the image.
+- Then, apply the USER INSTRUCTIONS (if any) to set 'payer', 'involved', or 'description'.
+- If the USER INSTRUCTIONS are empty or unclear, ignore them and just extract the transaction.
+- Always return valid JSON.`
                             },
                             {
                                 type: 'image_url',
