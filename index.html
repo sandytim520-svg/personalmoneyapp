@@ -16,6 +16,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap"
@@ -496,7 +497,11 @@
                 expense_details: "支出明細", income_details: "收入明細",
                 upload_icon: "上傳圖示", custom_icon: "自訂圖示", filter_category: "類別", filter_type: "類型",
                 cleared: "已結清", mark_cleared: "結清", undo_cleared: "取消結清",
-                enter_prompt: "輸入指令 (可選)", prompt_example: "例: AB分,D付150元,A 50元,B 50元", start_analysis: "開始分析"
+                enter_prompt: "輸入指令 (可選)", prompt_example: "例: AB分,D付150元,A 50元,B 50元", start_analysis: "開始分析",
+                open_book: "開放帳本", open_book_desc: "開啟後，任何人都可透過分享連結編輯此帳本",
+                share_link: "分享連結", copy_link: "複製連結", link_copied: "已複製到剪貼簿",
+                guest_mode: "訪客模式", public_books: "公開帳本", back_to_home: "返回首頁",
+                no_public_books: "此用戶沒有公開帳本", loading_auth: "載入中..."
             },
             en: {
                 app_title: "Split Bill", book_list: "Ledgers", default_book: "Default Ledger", ledger: "Ledger",
@@ -556,7 +561,11 @@
                 expense_details: "Expense Details", income_details: "Income Details",
                 upload_icon: "Upload Icon", custom_icon: "Custom Icon", filter_category: "Category", filter_type: "Type",
                 cleared: "Cleared", mark_cleared: "Clear", undo_cleared: "Undo Clear",
-                enter_prompt: "Enter command (optional)", prompt_example: "e.g. Custom split, D pays 150, A 50, B 50", start_analysis: "Start Analysis"
+                enter_prompt: "Enter command (optional)", prompt_example: "e.g. Custom split, D pays 150, A 50, B 50", start_analysis: "Start Analysis",
+                open_book: "Open Book", open_book_desc: "When enabled, anyone can edit this book via share link",
+                share_link: "Share Link", copy_link: "Copy Link", link_copied: "Copied to clipboard",
+                guest_mode: "Guest Mode", public_books: "Public Books", back_to_home: "Back to Home",
+                no_public_books: "No public books available", loading_auth: "Loading..."
             }
         };
 
@@ -845,6 +854,84 @@
             const fileInputRef = useRef(null);
             const bottomRef = useRef(null);
 
+            // Firebase Auth State
+            const [userId, setUserId] = useState(null);
+            const [authLoading, setAuthLoading] = useState(true);
+            const [isGuest, setIsGuest] = useState(false);
+            const [shareUserId, setShareUserId] = useState(null);
+            const [publicBooks, setPublicBooks] = useState({});
+
+            // Check URL for share parameter
+            useEffect(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const shareParam = urlParams.get('share');
+                if (shareParam) {
+                    setShareUserId(shareParam);
+                    setIsGuest(true);
+                }
+            }, []);
+
+            // Firebase Anonymous Auth
+            useEffect(() => {
+                if (isGuest && shareUserId) {
+                    // Guest mode: load public books of the shared user
+                    setAuthLoading(false);
+                    const publicBooksRef = db.ref('publicBooks');
+                    publicBooksRef.orderByChild('ownerId').equalTo(shareUserId).on('value', (snapshot) => {
+                        const val = snapshot.val();
+                        if (val) {
+                            setPublicBooks(val);
+                            // Set first public book as current if none selected
+                            const firstBookId = Object.keys(val)[0];
+                            if (firstBookId && !val[currentBookId]) {
+                                setCurrentBookId(firstBookId);
+                            }
+                        } else {
+                            setPublicBooks({});
+                        }
+                    });
+                    return () => publicBooksRef.off();
+                }
+
+                // Owner mode: Anonymous sign in
+                const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+                    if (user) {
+                        setUserId(user.uid);
+                        localStorage.setItem('userId', user.uid);
+                        setAuthLoading(false);
+                    } else {
+                        // Try to sign in anonymously
+                        firebase.auth().signInAnonymously().catch((error) => {
+                            console.error('Anonymous auth error:', error);
+                            setAuthLoading(false);
+                        });
+                    }
+                });
+                return () => unsubscribe();
+            }, [isGuest, shareUserId]);
+
+            // Helper function to get data path based on public/private status
+            const getDataPath = (basePath, bookId) => {
+                const book = booksMeta[bookId] || publicBooks[bookId];
+                if (book && book.isPublic) {
+                    return 'publicBooks/' + bookId + '/' + basePath;
+                }
+                if (isGuest) {
+                    return 'publicBooks/' + bookId + '/' + basePath;
+                }
+                if (!userId) return null;
+                if (bookId === 'default') {
+                    return 'users/' + userId + '/' + basePath;
+                }
+                return 'users/' + userId + '/books/' + bookId + '/' + basePath;
+            };
+
+            // Helper function to get user base path
+            const getUserPath = (path) => {
+                if (!userId) return null;
+                return 'users/' + userId + '/' + path;
+            };
+
             const currentBook = booksMeta[currentBookId] || { name: t.default_book, currency: 'TWD', customRate: 1, members: ['慧欣', '俊廷'], isPersonal: false };
             const isPersonalBook = currentBook.isPersonal || false;
             const validBookMembers = (currentBook.members || []).filter(m => globalMembers.hasOwnProperty(m));
@@ -928,13 +1015,34 @@
             }, [darkMode]);
 
             useEffect(() => {
-                const metaRef = db.ref('booksMeta');
-                const membersRef = db.ref('settings/globalMembers');
-                const deletedRef = db.ref('deletedBooks');
-                const categoriesRef = db.ref('settings/customCategories');
-                metaRef.on('value', (snapshot) => { const val = snapshot.val(); if (val) setBooksMeta(val); else db.ref('booksMeta/default').set({ name: t.default_book, currency: 'TWD', customRate: 1, members: ['慧欣', '俊廷'], isPersonal: false, createdAt: Date.now() }); });
-                membersRef.on('value', (snapshot) => { const val = snapshot.val(); if (val) setGlobalMembers(val); else db.ref('settings/globalMembers').set({ '慧欣': '🐰', '俊廷': '🐻', '章魚成': '🐙', 'SD': '🐷' }); });
-                categoriesRef.on('value', (snapshot) => { const val = snapshot.val(); if (val) { const cats = Object.entries(val).map(([id, cat]) => ({ id, ...cat })); setCustomCategories(cats); } else setCustomCategories([]); });
+                // Skip if still loading auth or in guest mode without share user
+                if (authLoading) return;
+                if (isGuest) return; // Guest mode handled separately
+
+                if (!userId) return; // Wait for auth
+
+                const metaRef = db.ref('users/' + userId + '/booksMeta');
+                const membersRef = db.ref('users/' + userId + '/settings/globalMembers');
+                const deletedRef = db.ref('users/' + userId + '/deletedBooks');
+                const categoriesRef = db.ref('users/' + userId + '/settings/customCategories');
+
+                metaRef.on('value', (snapshot) => {
+                    const val = snapshot.val();
+                    if (val) setBooksMeta(val);
+                    else db.ref('users/' + userId + '/booksMeta/default').set({ name: t.default_book, currency: 'TWD', customRate: 1, members: ['A', 'B'], isPersonal: false, createdAt: Date.now() });
+                });
+                membersRef.on('value', (snapshot) => {
+                    const val = snapshot.val();
+                    if (val) setGlobalMembers(val);
+                    else db.ref('users/' + userId + '/settings/globalMembers').set({ 'A': '🐰', 'B': '🐻' });
+                });
+                categoriesRef.on('value', (snapshot) => {
+                    const val = snapshot.val();
+                    if (val) {
+                        const cats = Object.entries(val).map(([id, cat]) => ({ id, ...cat }));
+                        setCustomCategories(cats);
+                    } else setCustomCategories([]);
+                });
                 deletedRef.on('value', (snapshot) => {
                     const val = snapshot.val();
                     if (val) {
@@ -943,13 +1051,13 @@
                         const validBooks = {};
                         Object.entries(val).forEach(([id, book]) => {
                             if (now - book.deletedAt < thirtyDays) validBooks[id] = book;
-                            else { db.ref('deletedBooks/' + id).remove(); db.ref('deletedBooksData/' + id).remove(); }
+                            else { db.ref('users/' + userId + '/deletedBooks/' + id).remove(); db.ref('users/' + userId + '/deletedBooksData/' + id).remove(); }
                         });
                         setDeletedBooks(validBooks);
                     } else setDeletedBooks({});
                 });
                 return () => { metaRef.off(); membersRef.off(); deletedRef.off(); categoriesRef.off(); };
-            }, []);
+            }, [userId, authLoading, isGuest]);
 
             // 監聽結清狀態
             useEffect(() => {
@@ -1105,6 +1213,52 @@
             const hasActiveFilters = isPersonalBook
                 ? (activeFilters.category || activeFilters.txType || (activeFilters.dateType && activeFilters.dateType !== 'none'))
                 : (activeFilters.payer || activeFilters.payee || (activeFilters.dateType && activeFilters.dateType !== 'none'));
+
+            // Toggle public/private book
+            const togglePublicBook = async (bookId) => {
+                if (!userId) return;
+                const book = booksMeta[bookId];
+                if (!book) return;
+
+                const isCurrentlyPublic = book.isPublic || false;
+                const userBookMetaRef = db.ref('users/' + userId + '/booksMeta/' + bookId);
+
+                if (isCurrentlyPublic) {
+                    // Make private: remove from publicBooks and update meta
+                    await db.ref('publicBooks/' + bookId).remove();
+                    await userBookMetaRef.update({ isPublic: false });
+                } else {
+                    // Make public: copy book data to publicBooks
+                    const bookData = {
+                        meta: { ...book, isPublic: true },
+                        ownerId: userId
+                    };
+
+                    // Copy transactions
+                    const txPath = bookId === 'default' ? 'users/' + userId + '/transactions' : 'users/' + userId + '/books/' + bookId + '/transactions';
+                    const txSnapshot = await db.ref(txPath).once('value');
+                    if (txSnapshot.val()) {
+                        bookData.transactions = txSnapshot.val();
+                    }
+
+                    // Copy settlements
+                    const stPath = bookId === 'default' ? 'users/' + userId + '/settlements' : 'users/' + userId + '/books/' + bookId + '/settlements';
+                    const stSnapshot = await db.ref(stPath).once('value');
+                    if (stSnapshot.val()) {
+                        bookData.settlements = stSnapshot.val();
+                    }
+
+                    // Copy recurring
+                    const recPath = bookId === 'default' ? 'users/' + userId + '/recurring' : 'users/' + userId + '/books/' + bookId + '/recurring';
+                    const recSnapshot = await db.ref(recPath).once('value');
+                    if (recSnapshot.val()) {
+                        bookData.recurring = recSnapshot.val();
+                    }
+
+                    await db.ref('publicBooks/' + bookId).set(bookData);
+                    await userBookMetaRef.update({ isPublic: true });
+                }
+            };
 
             const toggleLang = () => setLang(l => l === 'zh' ? 'en' : 'zh');
             const handleAddGlobalMember = () => { if (!newMemberName.trim()) return; db.ref('settings/globalMembers/' + newMemberName.trim()).set(newMemberAvatar); setNewMemberName(''); };
@@ -2172,6 +2326,31 @@
 
             return (
                 <div className="min-h-screen bg-gray-100 pb-24 relative overflow-x-hidden">
+                    {/* Auth Loading Screen */}
+                    {authLoading && (
+                        <div className="fixed inset-0 z-[100] bg-white flex items-center justify-center">
+                            <div className="text-center">
+                                <div className="text-4xl mb-4">✨</div>
+                                <p className="text-gray-500 font-bold">{t.loading_auth}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Guest Mode Banner */}
+                    {isGuest && (
+                        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-4 py-3 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">👥</span>
+                                <span className="font-bold text-sm">{t.guest_mode}</span>
+                            </div>
+                            <button
+                                onClick={() => { window.location.href = window.location.origin; }}
+                                className="px-3 py-1 bg-white/20 rounded-lg text-sm font-bold hover:bg-white/30"
+                            >
+                                {t.back_to_home}
+                            </button>
+                        </div>
+                    )}
                     {/* Menu */}
                     {isMenuOpen && <div className="fixed inset-0 z-50 flex"><div className="absolute inset-0 bg-black/50" onClick={() => setIsMenuOpen(false)}></div><div className="bg-white w-4/5 max-w-xs h-full shadow-2xl slide-in-left flex flex-col relative z-10"><div className="p-6 flex-1 overflow-y-auto no-scrollbar">
                         <h2 className="text-xl font-black text-gray-800 mb-4 flex items-center gap-2"><Icons.Globe /> {t.book_list}</h2>
@@ -2360,6 +2539,47 @@
                                     <Icons.ChevronRight />
                                 </div>
                             </button>
+
+                            {/* Open Book Toggle (only for non-guest, not default book) */}
+                            {!isGuest && currentBookId !== 'default' && (
+                                <div className="bg-white rounded-2xl p-4 shadow-sm">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl">🌐</span>
+                                            <h3 className="font-bold text-gray-800">{t.open_book}</h3>
+                                        </div>
+                                        <button
+                                            onClick={() => togglePublicBook(currentBookId)}
+                                            className={`w-14 h-8 rounded-full transition-all relative ${currentBook.isPublic ? 'bg-green-500' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`w-6 h-6 bg-white rounded-full absolute top-1 transition-all shadow ${currentBook.isPublic ? 'right-1' : 'left-1'}`}></div>
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mb-3">{t.open_book_desc}</p>
+                                    {currentBook.isPublic && userId && (
+                                        <div className="bg-gray-50 rounded-xl p-3">
+                                            <div className="text-xs text-gray-400 mb-1">{t.share_link}</div>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    readOnly
+                                                    value={window.location.origin + '?share=' + userId}
+                                                    className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-gray-600"
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(window.location.origin + '?share=' + userId);
+                                                        alert(t.link_copied);
+                                                    }}
+                                                    className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold shrink-0"
+                                                >
+                                                    {t.copy_link}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>}
 
