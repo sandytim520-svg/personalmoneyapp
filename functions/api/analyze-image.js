@@ -76,7 +76,7 @@ export async function onRequest(context) {
                 'X-Title': 'Personal Money App'
             },
             body: JSON.stringify({
-                model: 'nvidia/nemotron-nano-12b-v2-vl:free',
+                model: 'google/gemini-2.0-flash-exp:free',
                 messages: [
                     {
                         role: 'user',
