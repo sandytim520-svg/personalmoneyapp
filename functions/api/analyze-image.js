@@ -104,8 +104,8 @@ Return JSON Array ONLY:
   "splitType": "equal"
 }]`;
 
-        // Call Google Gemini API
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent`;
+        // Call Google Gemini API (using gemini-2.0-flash-001 - stable model)
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -191,7 +191,7 @@ Return JSON Array ONLY:
             success: transactions.length > 0,
             transactions: transactions,
             count: transactions.length,
-            source: 'gemini-1.5-flash-official'
+            source: 'gemini-2.0-flash'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
