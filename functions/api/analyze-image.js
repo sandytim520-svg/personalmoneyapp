@@ -122,7 +122,7 @@ If no transactions visible, return: []`;
         const modelProviders = [
             { provider: 'openrouter', model: 'qwen/qwen2.5-vl-72b-instruct:free' },
             { provider: 'groq', model: 'llama-3.2-90b-vision-preview' },
-            { provider: 'openrouter', model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1:free' },
+            { provider: 'openrouter', model: 'nvidia/nemotron-nano-12b-v2-vl:free' },
             { provider: 'openrouter', model: 'meta-llama/llama-4-maverick:free' },
             { provider: 'groq', model: 'llama-3.2-11b-vision-preview' },
             { provider: 'openrouter', model: 'nvidia/llama-3.3-nemotron-super-49b-v1:free' },
