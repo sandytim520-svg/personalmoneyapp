@@ -863,6 +863,9 @@
             const [shareUserId, setShareUserId] = useState(null);
             const [shareBookId, setShareBookId] = useState(null);
             const [publicBooks, setPublicBooks] = useState({});
+            const [guestPasswordInput, setGuestPasswordInput] = useState('');
+            const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+            const [bookPassword, setBookPassword] = useState(''); // Password for the book
 
             // Check URL for share parameter
             useEffect(() => {
@@ -1478,9 +1481,38 @@
             const startEditGlobalMember = (name, avatar) => { setEditingGlobalMember(name); setEditMemberName(name); setEditMemberAvatar(avatar); };
             const saveGlobalMember = () => { if (!editMemberName.trim() || !userId) return; if (editMemberName !== editingGlobalMember) db.ref('users/' + userId + '/settings/globalMembers/' + editingGlobalMember).remove(); db.ref('users/' + userId + '/settings/globalMembers/' + editMemberName.trim()).set(editMemberAvatar); setEditingGlobalMember(null); };
             const handleDeleteGlobalMember = (name) => { if (!userId) return; if (confirm(t.confirm_delete)) db.ref('users/' + userId + '/settings/globalMembers/' + name).remove(); };
+
+            // Member reorder functions
+            const moveMemberUp = (name) => {
+                if (!userId) return;
+                const entries = Object.entries(globalMembers);
+                const index = entries.findIndex(([n]) => n === name);
+                if (index <= 0) return; // Already at top
+                // Swap with previous
+                [entries[index - 1], entries[index]] = [entries[index], entries[index - 1]];
+                // Reconstruct object
+                const newMembers = {};
+                entries.forEach(([n, a]) => { newMembers[n] = a; });
+                db.ref('users/' + userId + '/settings/globalMembers').set(newMembers);
+            };
+
+            const moveMemberDown = (name) => {
+                if (!userId) return;
+                const entries = Object.entries(globalMembers);
+                const index = entries.findIndex(([n]) => n === name);
+                if (index >= entries.length - 1) return; // Already at bottom
+                // Swap with next
+                [entries[index], entries[index + 1]] = [entries[index + 1], entries[index]];
+                // Reconstruct object
+                const newMembers = {};
+                entries.forEach(([n, a]) => { newMembers[n] = a; });
+                db.ref('users/' + userId + '/settings/globalMembers').set(newMembers);
+            };
+
             const toggleBookMember = (member) => { if (!userId) return; const isIncluded = bookMembers.includes(member); let newMembers; if (isIncluded) { if (bookMembers.length <= 2) return alert(t.alert_min_members); newMembers = bookMembers.filter(m => m !== member); } else { newMembers = [...bookMembers, member]; } db.ref('users/' + userId + '/booksMeta/' + currentBookId).update({ members: newMembers }); };
 
             // Recurring transactions functions
+
             const openRecurringForm = (item = null) => {
                 if (item) {
                     setEditingRecurring(item.id);
@@ -2740,6 +2772,56 @@
                             </button>
                         </div>
                     )}
+
+                    {/* Guest Password Verification Screen */}
+                    {isGuest && !isPasswordVerified && currentBook && currentBook.password && (
+                        <div className="fixed inset-0 z-[100] bg-gradient-to-br from-blue-600 to-purple-700 flex flex-col items-center justify-center p-6">
+                            <div className="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl">
+                                <div className="text-center mb-6">
+                                    <div className="text-5xl mb-4">🔐</div>
+                                    <h2 className="text-xl font-black text-gray-800 mb-2">{lang === 'zh' ? '需要密碼' : 'Password Required'}</h2>
+                                    <p className="text-sm text-gray-500">{lang === 'zh' ? '此帳本有設定訪問密碼' : 'This ledger has password protection'}</p>
+                                </div>
+                                <div className="space-y-4">
+                                    <input
+                                        type="password"
+                                        value={guestPasswordInput}
+                                        onChange={(e) => setGuestPasswordInput(e.target.value)}
+                                        placeholder={lang === 'zh' ? '輸入密碼' : 'Enter password'}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold outline-none text-center text-lg"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                if (guestPasswordInput === currentBook.password) {
+                                                    setIsPasswordVerified(true);
+                                                } else {
+                                                    alert(lang === 'zh' ? '密碼錯誤' : 'Incorrect password');
+                                                }
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (guestPasswordInput === currentBook.password) {
+                                                setIsPasswordVerified(true);
+                                            } else {
+                                                alert(lang === 'zh' ? '密碼錯誤' : 'Incorrect password');
+                                            }
+                                        }}
+                                        className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold text-lg"
+                                    >
+                                        {lang === 'zh' ? '驗證' : 'Verify'}
+                                    </button>
+                                    <button
+                                        onClick={() => { window.location.href = window.location.origin; }}
+                                        className="w-full py-2 text-gray-500 text-sm font-bold"
+                                    >
+                                        {t.back_to_home}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Menu */}
                     {isMenuOpen && <div className="fixed inset-0 z-50 flex"><div className="absolute inset-0 bg-black/50" onClick={() => setIsMenuOpen(false)}></div><div className="bg-white w-4/5 max-w-xs h-full shadow-2xl slide-in-left flex flex-col relative z-10"><div className="p-6 flex-1 overflow-y-auto no-scrollbar">
                         <h2 className="text-xl font-black text-gray-800 mb-4 flex items-center gap-2"><Icons.Globe /> {t.book_list}</h2>
@@ -2839,7 +2921,7 @@
                     </div></div>}
 
                     {/* Members Manager Modal */}
-                    {isMemberManagerOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl h-[600px] flex flex-col"><div className="flex items-center gap-2 mb-4"><button onClick={() => { setIsMemberManagerOpen(false); if (memberManagerSource === 'book') setIsSettingsOpen(true); else setIsMenuSettingsOpen(true); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h3 className="text-xl font-black text-gray-800">{t.member_mgmt}</h3></div><div className="flex-1 overflow-y-auto space-y-2 mb-4 no-scrollbar">{Object.entries(globalMembers).map(([name, avatar]) => (<div key={name} className="bg-gray-50 p-3 rounded-xl border border-gray-100">{editingGlobalMember === name ? (<div className="space-y-3"><div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setEditMemberAvatar(a)} className={`text-xl p-2 rounded-lg flex items-center justify-center ${editMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input value={editMemberName} onChange={e => setEditMemberName(e.target.value)} className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-2 font-bold" /><button onClick={saveGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold text-sm shrink-0">{t.save}</button></div></div>) : (<div className="flex items-center justify-between"><span className="font-bold text-lg flex items-center gap-3"><span className="text-2xl">{avatar}</span> {name}</span><div className="flex gap-1"><button onClick={() => startEditGlobalMember(name, avatar)} className="text-gray-400 hover:text-black p-2"><Icons.Edit /></button><button onClick={() => handleDeleteGlobalMember(name)} className="text-gray-400 hover:text-red-500 p-2"><Icons.Trash /></button></div></div>)}</div>))}</div><div className="border-t pt-4"><p className="text-xs font-bold text-gray-400 mb-2">{t.add_member}</p><div className="grid grid-cols-5 gap-2 mb-3 max-h-32 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setNewMemberAvatar(a)} className={`text-2xl p-2 rounded-lg flex items-center justify-center ${newMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input type="text" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder={t.name} className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 font-bold outline-none" /><button onClick={handleAddGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold shrink-0">{t.add}</button></div></div></div></div>}
+                    {isMemberManagerOpen && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl h-[600px] flex flex-col"><div className="flex items-center gap-2 mb-4"><button onClick={() => { setIsMemberManagerOpen(false); if (memberManagerSource === 'book') setIsSettingsOpen(true); else setIsMenuSettingsOpen(true); }} className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"><Icons.Back /></button><h3 className="text-xl font-black text-gray-800">{t.member_mgmt}</h3></div><div className="flex-1 overflow-y-auto space-y-2 mb-4 no-scrollbar">{Object.entries(globalMembers).map(([name, avatar], index, arr) => (<div key={name} className="bg-gray-50 p-3 rounded-xl border border-gray-100">{editingGlobalMember === name ? (<div className="space-y-3"><div className="grid grid-cols-5 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setEditMemberAvatar(a)} className={`text-xl p-2 rounded-lg flex items-center justify-center ${editMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input value={editMemberName} onChange={e => setEditMemberName(e.target.value)} className="flex-1 min-w-0 border border-gray-300 rounded-xl px-3 py-2 font-bold" /><button onClick={saveGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold text-sm shrink-0">{t.save}</button></div></div>) : (<div className="flex items-center justify-between"><span className="font-bold text-lg flex items-center gap-3"><span className="text-2xl">{avatar}</span> {name}</span><div className="flex gap-1"><button onClick={() => moveMemberUp(name)} disabled={index === 0} className={`p-2 rounded ${index === 0 ? 'text-gray-200' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}>▲</button><button onClick={() => moveMemberDown(name)} disabled={index === arr.length - 1} className={`p-2 rounded ${index === arr.length - 1 ? 'text-gray-200' : 'text-gray-400 hover:text-blue-500 hover:bg-blue-50'}`}>▼</button><button onClick={() => startEditGlobalMember(name, avatar)} className="text-gray-400 hover:text-black p-2"><Icons.Edit /></button><button onClick={() => handleDeleteGlobalMember(name)} className="text-gray-400 hover:text-red-500 p-2"><Icons.Trash /></button></div></div>)}</div>))}</div><div className="border-t pt-4"><p className="text-xs font-bold text-gray-400 mb-2">{t.add_member}</p><div className="grid grid-cols-5 gap-2 mb-3 max-h-32 overflow-y-auto no-scrollbar p-1">{AVATARS.map(a => (<button key={a} onClick={() => setNewMemberAvatar(a)} className={`text-2xl p-2 rounded-lg flex items-center justify-center ${newMemberAvatar === a ? 'bg-black bg-opacity-10 ring-2 ring-black ring-offset-1' : 'hover:bg-gray-200'}`}>{a}</button>))}</div><div className="flex gap-2"><input type="text" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder={t.name} className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-3 font-bold outline-none" /><button onClick={handleAddGlobalMember} className="bg-black text-white px-4 rounded-xl font-bold shrink-0">{t.add}</button></div></div></div></div>}
 
                     {/* Book Settings Modal */}
                     {isBookMemberSettingsOpen && !isPersonalBook && <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm modal-enter"><div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl"><div className="flex justify-between items-center mb-4"><h3 className="text-xl font-black text-gray-800">{t.book_settings}</h3><button onClick={() => setIsBookMemberSettingsOpen(false)} className="p-2 bg-gray-100 rounded-full">✕</button></div><p className="text-xs text-gray-400 mb-4">{t.select_members}:</p><div className="max-h-[60vh] overflow-y-auto space-y-2 no-scrollbar">{allDisplayMembers.map((name) => { const avatar = globalMembers[name] || '👻'; return (<button key={name} onClick={() => toggleBookMember(name)} className={`w-full p-3 rounded-xl border-2 font-bold text-lg flex items-center justify-between transition-all ${bookMembers.includes(name) ? 'border-black bg-gray-50' : 'border-gray-100'}`}><div className="flex items-center gap-2"><span className="text-2xl">{avatar}</span><span className="text-gray-800">{name}</span></div>{bookMembers.includes(name) && <Icons.Check />}</button>); })}</div></div></div>}
@@ -2969,29 +3051,53 @@
                                     </div>
                                     <p className="text-xs text-gray-500 mb-3">{t.open_book_desc}</p>
                                     {currentBook.isPublic && userId && (
-                                        <div className="bg-gray-50 rounded-xl p-3">
-                                            <div className="text-xs text-gray-400 mb-1">{t.share_link}</div>
-                                            <div className="flex items-center gap-2">
-                                                <input
-                                                    type="text"
-                                                    readOnly
-                                                    value={window.location.origin + '?share=' + userId}
-                                                    className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-gray-600"
-                                                />
-                                                <button
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(window.location.origin + '?share=' + userId);
-                                                        alert(t.link_copied);
-                                                    }}
-                                                    className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold shrink-0"
-                                                >
-                                                    {t.copy_link}
-                                                </button>
+                                        <>
+                                            {/* Password Setting */}
+                                            <div className="bg-yellow-50 rounded-xl p-3 mb-3 border border-yellow-200">
+                                                <div className="text-xs text-yellow-700 font-bold mb-2">🔐 {lang === 'zh' ? '訪問密碼' : 'Access Password'}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={bookPassword}
+                                                        onChange={(e) => setBookPassword(e.target.value)}
+                                                        placeholder={lang === 'zh' ? '輸入密碼 (選填)' : 'Enter password (optional)'}
+                                                        className="flex-1 bg-white border border-yellow-300 rounded-lg px-3 py-2 text-sm font-bold text-gray-700 outline-none"
+                                                    />
+                                                    <button
+                                                        onClick={async () => {
+                                                            await db.ref('publicBooks/' + currentBookId + '/password').set(bookPassword || null);
+                                                            alert(lang === 'zh' ? '密碼已儲存' : 'Password saved');
+                                                        }}
+                                                        className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-sm font-bold shrink-0"
+                                                    >
+                                                        {t.save}
+                                                    </button>
+                                                </div>
+                                                <p className="text-[10px] text-yellow-600 mt-1">{lang === 'zh' ? '設定後訪客需輸入密碼才能查看' : 'Guests must enter password to access'}</p>
                                             </div>
-                                        </div>
+                                            {/* Share Link */}
+                                            <div className="bg-gray-50 rounded-xl p-3">
+                                                <div className="text-xs text-gray-400 mb-1">{t.share_link}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        readOnly
+                                                        value={window.location.origin + '?share=' + userId + '&book=' + currentBookId}
+                                                        className="flex-1 bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-gray-600"
+                                                    />
+                                                    <button
+                                                        onClick={copyShareLink}
+                                                        className="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm font-bold shrink-0"
+                                                    >
+                                                        {t.copy_link}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
                                     )}
                                 </div>
                             )}
+
                         </div>
                     </div>}
 
