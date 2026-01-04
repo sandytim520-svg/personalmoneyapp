@@ -1195,6 +1195,11 @@
                 });
             };
 
+            const validBookMembers = (currentBook.members || []).filter(m => globalMembers.hasOwnProperty(m));
+            const bookMembers = sortMembersByPriority(validBookMembers.length > 0 ? validBookMembers : Object.keys(globalMembers).slice(0, 2));
+            const currentCurrency = CURRENCIES.find(c => c.code === currentBook.currency) || CURRENCIES[0];
+            const activeRate = currentBook.customRate || currentCurrency.rate || 1;
+
             // Sorted globalMembers entries for UI display (Member Management)
             const sortedGlobalMemberEntries = React.useMemo(() => {
                 return Object.entries(globalMembers).sort((a, b) => {
@@ -1233,11 +1238,6 @@
                     return 0;
                 });
             }, [globalMembers, bookMembers]);
-
-            const validBookMembers = (currentBook.members || []).filter(m => globalMembers.hasOwnProperty(m));
-            const bookMembers = sortMembersByPriority(validBookMembers.length > 0 ? validBookMembers : Object.keys(globalMembers).slice(0, 2));
-            const currentCurrency = CURRENCIES.find(c => c.code === currentBook.currency) || CURRENCIES[0];
-            const activeRate = currentBook.customRate || currentCurrency.rate || 1;
 
 
             // Combine default and custom categories
