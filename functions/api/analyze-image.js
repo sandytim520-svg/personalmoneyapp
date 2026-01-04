@@ -105,12 +105,13 @@ Return JSON Array ONLY:
 }]`;
 
         // Call Google Gemini API
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=${env.GEMINI_API_KEY}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent`;
 
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-goog-api-key': env.GEMINI_API_KEY
             },
             body: JSON.stringify({
                 contents: [{
