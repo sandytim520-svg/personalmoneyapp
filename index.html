@@ -856,6 +856,7 @@
 
             // Firebase Auth State
             const [userId, setUserId] = useState(null);
+            const [userInfo, setUserInfo] = useState(null); // { name, photo, email }
             const [authLoading, setAuthLoading] = useState(true);
             const [isGuest, setIsGuest] = useState(false);
             const [shareUserId, setShareUserId] = useState(null);
@@ -871,7 +872,29 @@
                 }
             }, []);
 
-            // Firebase Anonymous Auth
+            // Google Sign-in function
+            const signInWithGoogle = async () => {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                try {
+                    await firebase.auth().signInWithPopup(provider);
+                } catch (error) {
+                    console.error('Google sign-in error:', error);
+                    alert('登入失敗，請再試一次');
+                }
+            };
+
+            // Sign out function
+            const signOut = async () => {
+                try {
+                    await firebase.auth().signOut();
+                    setUserId(null);
+                    setUserInfo(null);
+                } catch (error) {
+                    console.error('Sign out error:', error);
+                }
+            };
+
+            // Firebase Auth State Listener
             useEffect(() => {
                 if (isGuest && shareUserId) {
                     // Guest mode: load public books of the shared user
@@ -881,7 +904,6 @@
                         const val = snapshot.val();
                         if (val) {
                             setPublicBooks(val);
-                            // Set first public book as current if none selected
                             const firstBookId = Object.keys(val)[0];
                             if (firstBookId && !val[currentBookId]) {
                                 setCurrentBookId(firstBookId);
@@ -893,53 +915,24 @@
                     return () => publicBooksRef.off();
                 }
 
-                // Helper function to generate UUID fallback
-                const generateLocalUserId = () => {
-                    let localId = localStorage.getItem('localUserId');
-                    if (!localId) {
-                        localId = 'local_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                        localStorage.setItem('localUserId', localId);
-                    }
-                    return localId;
-                };
-
-                // Owner mode: Anonymous sign in
+                // Normal mode: Listen for auth state
                 const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
                     if (user) {
                         setUserId(user.uid);
-                        localStorage.setItem('userId', user.uid);
+                        setUserInfo({
+                            name: user.displayName || 'User',
+                            photo: user.photoURL,
+                            email: user.email
+                        });
                         setAuthLoading(false);
                     } else {
-                        // Try to sign in anonymously
-                        firebase.auth().signInAnonymously()
-                            .then((result) => {
-                                // Success - onAuthStateChanged will handle setting userId
-                            })
-                            .catch((error) => {
-                                console.error('Anonymous auth error:', error);
-                                // Fallback: use local storage userId if auth fails
-                                const fallbackId = generateLocalUserId();
-                                console.log('Using fallback userId:', fallbackId);
-                                setUserId(fallbackId);
-                                setAuthLoading(false);
-                            });
+                        setUserId(null);
+                        setUserInfo(null);
+                        setAuthLoading(false);
                     }
                 });
 
-                // Set a timeout fallback in case auth is slow or fails silently
-                const timeoutId = setTimeout(() => {
-                    if (!userId) {
-                        const fallbackId = generateLocalUserId();
-                        console.log('Auth timeout, using fallback userId:', fallbackId);
-                        setUserId(fallbackId);
-                        setAuthLoading(false);
-                    }
-                }, 3000);
-
-                return () => {
-                    unsubscribe();
-                    clearTimeout(timeoutId);
-                };
+                return () => unsubscribe();
             }, [isGuest, shareUserId]);
 
             // Helper function to get data path based on public/private status
@@ -2428,10 +2421,38 @@
                 <div className="min-h-screen bg-gray-100 pb-24 relative overflow-x-hidden">
                     {/* Auth Loading Screen */}
                     {authLoading && (
-                        <div className="fixed inset-0 z-[100] bg-white flex items-center justify-center">
+                        <div className="fixed inset-0 z-[100] bg-gradient-to-br from-gray-50 to-gray-200 flex items-center justify-center">
                             <div className="text-center">
-                                <div className="text-4xl mb-4">✨</div>
+                                <div className="text-5xl mb-4 animate-pulse">💰</div>
                                 <p className="text-gray-500 font-bold">{t.loading_auth}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Login Screen - Show when not loading and not logged in (and not guest) */}
+                    {!authLoading && !userId && !isGuest && (
+                        <div className="fixed inset-0 z-[100] bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+                            <div className="text-center p-8 max-w-sm w-full">
+                                <div className="text-7xl mb-6">💰</div>
+                                <h1 className="text-3xl font-black text-gray-800 mb-2">{t.app_title}</h1>
+                                <p className="text-gray-500 mb-8">{lang === 'zh' ? '輕鬆記錄、智慧分帳' : 'Track & Split Expenses'}</p>
+
+                                <button
+                                    onClick={signInWithGoogle}
+                                    className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 rounded-2xl px-6 py-4 font-bold text-gray-700 hover:border-gray-400 hover:shadow-lg transition-all"
+                                >
+                                    <svg className="w-6 h-6" viewBox="0 0 24 24">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                    </svg>
+                                    {lang === 'zh' ? '使用 Google 帳號登入' : 'Sign in with Google'}
+                                </button>
+
+                                <p className="text-xs text-gray-400 mt-6">
+                                    {lang === 'zh' ? '登入後資料會自動跨裝置同步' : 'Your data syncs across all devices'}
+                                </p>
                             </div>
                         </div>
                     )}
@@ -2490,6 +2511,29 @@
                             <button onClick={toggleLang} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200"><Icons.Lang /> {t.lang_btn}</button>
                             <button onClick={() => { setIsDeletedBooksOpen(true); setIsMenuSettingsOpen(false); }} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200"><Icons.Trash /> {t.recently_deleted} {Object.keys(deletedBooks).length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{Object.keys(deletedBooks).length}</span>}</button>
                         </div>
+
+                        {/* User Profile & Sign Out */}
+                        {userInfo && (
+                            <div className="mt-6 pt-4 border-t border-gray-200">
+                                <div className="flex items-center gap-3 mb-3">
+                                    {userInfo.photo ? (
+                                        <img src={userInfo.photo} alt="" className="w-10 h-10 rounded-full" />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-lg">👤</div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-bold text-gray-800 truncate">{userInfo.name}</div>
+                                        <div className="text-xs text-gray-400 truncate">{userInfo.email}</div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => { signOut(); setIsMenuSettingsOpen(false); }}
+                                    className="w-full bg-red-50 text-red-600 py-2 rounded-xl font-bold text-sm hover:bg-red-100"
+                                >
+                                    {lang === 'zh' ? '登出' : 'Sign Out'}
+                                </button>
+                            </div>
+                        )}
                     </div></div>}
 
                     {/* Add Book Modal - Step 1: Select Type */}
