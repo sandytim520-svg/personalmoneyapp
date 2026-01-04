@@ -494,6 +494,7 @@
                 confirm_delete_category: "確定要刪除此類別嗎？", category_in_use: "此類別正在使用中，無法刪除",
                 member_settings: "成員設定", import_success: "成功匯入", records: "筆交易記錄",
                 no_valid_records: "沒有有效的交易記錄可匯入", dark_mode: "深色模式", light_mode: "淺色模式",
+                import_data: "匯入資料", export_data: "匯出資料",
                 expense_details: "支出明細", income_details: "收入明細",
                 upload_icon: "上傳圖示", custom_icon: "自訂圖示", filter_category: "類別", filter_type: "類型",
                 cleared: "已結清", mark_cleared: "結清", undo_cleared: "取消結清",
@@ -947,6 +948,118 @@
                     console.error('Failed to copy:', err);
                     prompt('Copy this link:', link);
                 });
+            };
+
+            // Excel Export
+            const handleExportExcel = () => {
+                if (transactions.length === 0) {
+                    alert(lang === 'zh' ? '沒有資料可匯出' : 'No data to export');
+                    return;
+                }
+
+                const exportData = transactions.map(tx => ({
+                    [lang === 'zh' ? '日期' : 'Date']: tx.date,
+                    [lang === 'zh' ? '說明' : 'Description']: tx.description,
+                    [lang === 'zh' ? '金額' : 'Amount']: tx.amount,
+                    [lang === 'zh' ? '付款人' : 'Payer']: tx.payer,
+                    [lang === 'zh' ? '參與者' : 'Involved']: (tx.involved || []).join(','),
+                    [lang === 'zh' ? '類別' : 'Category']: tx.category || 'other',
+                    [lang === 'zh' ? '類型' : 'Type']: tx.txType || 'expense',
+                    [lang === 'zh' ? '匯率' : 'Rate']: tx.exchangeRate || activeRate
+                }));
+
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, currentBook.name || 'Transactions');
+                XLSX.writeFile(wb, `${currentBook.name || 'ledger'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            };
+
+            // Excel Import
+            const handleImportExcel = (e) => {
+                const file = e.target.files[0];
+                if (!file || !userId) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const wb = XLSX.read(event.target.result, { type: 'binary' });
+                        const ws = wb.Sheets[wb.SheetNames[0]];
+                        const data = XLSX.utils.sheet_to_json(ws);
+
+                        if (data.length === 0) {
+                            alert(t.no_valid_records);
+                            return;
+                        }
+
+                        // Map columns (support both Chinese and English)
+                        const columnMap = {
+                            date: ['日期', 'Date', 'date'],
+                            description: ['說明', 'Description', 'description'],
+                            amount: ['金額', 'Amount', 'amount'],
+                            payer: ['付款人', 'Payer', 'payer'],
+                            involved: ['參與者', 'Involved', 'involved'],
+                            category: ['類別', 'Category', 'category'],
+                            txType: ['類型', 'Type', 'type', 'txType'],
+                            exchangeRate: ['匯率', 'Rate', 'exchangeRate', 'rate']
+                        };
+
+                        const getColumnValue = (row, keys) => {
+                            for (const key of keys) {
+                                if (row[key] !== undefined) return row[key];
+                            }
+                            return null;
+                        };
+
+                        let importCount = 0;
+                        const txPath = currentBookId === 'default'
+                            ? 'users/' + userId + '/transactions'
+                            : 'users/' + userId + '/books/' + currentBookId + '/transactions';
+
+                        data.forEach(row => {
+                            const date = getColumnValue(row, columnMap.date);
+                            const description = getColumnValue(row, columnMap.description);
+                            const amount = parseFloat(getColumnValue(row, columnMap.amount));
+
+                            if (!date || !description || isNaN(amount)) return;
+
+                            const payer = getColumnValue(row, columnMap.payer) || bookMembers[0];
+                            const involvedStr = getColumnValue(row, columnMap.involved);
+                            const involved = involvedStr ? involvedStr.split(',').map(s => s.trim()) : bookMembers;
+                            const category = getColumnValue(row, columnMap.category) || 'other';
+                            const txType = getColumnValue(row, columnMap.txType) || 'expense';
+                            const exchangeRate = parseFloat(getColumnValue(row, columnMap.exchangeRate)) || activeRate;
+
+                            const txData = {
+                                date: String(date),
+                                description: String(description),
+                                amount: amount,
+                                payer: String(payer),
+                                involved: involved,
+                                category: String(category),
+                                txType: String(txType),
+                                exchangeRate: exchangeRate,
+                                amountTWD: Math.round(amount * exchangeRate),
+                                currency: currentBook.currency,
+                                createdAt: firebase.database.ServerValue.TIMESTAMP,
+                                importedAt: Date.now()
+                            };
+
+                            db.ref(txPath).push(txData);
+                            importCount++;
+                        });
+
+                        if (importCount > 0) {
+                            alert(t.import_success + ' ' + importCount + ' ' + t.records);
+                        } else {
+                            alert(t.no_valid_records);
+                        }
+                    } catch (err) {
+                        console.error('Import error:', err);
+                        alert(lang === 'zh' ? '匯入失敗: ' + err.message : 'Import failed: ' + err.message);
+                    }
+                };
+                reader.readAsBinaryString(file);
+                e.target.value = '';
             };
 
             // Firebase Auth State Listener
