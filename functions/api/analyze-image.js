@@ -4,7 +4,7 @@
 
 export async function onRequest(context) {
     const { request, env } = context;
-    
+
     const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -16,8 +16,8 @@ export async function onRequest(context) {
     }
 
     if (request.method === 'GET') {
-        return new Response(JSON.stringify({ 
-            status: 'ok', 
+        return new Response(JSON.stringify({
+            status: 'ok',
             message: 'OpenRouter API ready',
             hasApiKey: !!env.OPENROUTER_API_KEY
         }), {
@@ -34,7 +34,7 @@ export async function onRequest(context) {
 
     try {
         if (!env.OPENROUTER_API_KEY) {
-            return new Response(JSON.stringify({ 
+            return new Response(JSON.stringify({
                 error: 'OPENROUTER_API_KEY not configured',
                 success: false,
                 transactions: []
@@ -44,8 +44,8 @@ export async function onRequest(context) {
             });
         }
 
-        const { image } = await request.json();
-        
+        const { image, prompt, members, currency } = await request.json();
+
         if (!image) {
             return new Response(JSON.stringify({ error: 'No image provided' }), {
                 status: 400,
@@ -60,6 +60,11 @@ export async function onRequest(context) {
         }
 
         console.log('Calling OpenRouter API...');
+        console.log('User Prompt:', prompt);
+        console.log('Members:', members);
+
+        const memberListStr = members && members.length > 0 ? members.join(', ') : 'No specific members provided';
+        const currencyStr = currency || 'TWD';
 
         // Call OpenRouter API with free model
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -78,22 +83,30 @@ export async function onRequest(context) {
                         content: [
                             {
                                 type: 'text',
-                                text: `Analyze this bank app screenshot and extract ALL visible transactions.
+                                text: `Analyze this bank app screenshot or receipt.
+Valid Members for this ledger: [${memberListStr}]
+Currency: ${currencyStr}
 
-For each transaction, extract:
-- date: Convert "Sun 02 Nov 2025" to "2025-11-02"
-- description: The merchant name exactly as shown
-- category: The category text below the merchant name
-- amount: The dollar amount as number (24.35 from "-$24.35")
-- type: "expense" if minus sign, "income" if no minus
+USER INSTRUCTIONS (VERY IMPORTANT): 
+"${prompt || 'No specific instructions'}"
 
-RULES:
-- SKIP transactions where amount is hidden by buttons
-- Keep exact decimal amounts
-- Each transaction once only
+Task:
+1. Extract visible transactions.
+2. IF the USER INSTRUCTIONS specify who paid (e.g., "A付", "Bob paid"), set 'payer' accordingly. Default to first member if unknown.
+3. IF the USER INSTRUCTIONS specify a split (e.g., "AB分", "Split between A and B"), set 'involved' array accordingly.
+4. IF the USER INSTRUCTIONS specify a rename (e.g., "Item is Mop"), use that for 'description'.
 
-Return ONLY a JSON array, no other text:
-[{"date":"2025-11-02","description":"KFC","category":"Eating out","amount":24.35,"type":"expense"}]`
+Return JSON Array ONLY:
+[{
+  "date": "YYYY-MM-DD",
+  "description": "Item Name", 
+  "category": "food/transport/etc", 
+  "amount": 100.00, 
+  "type": "expense",
+  "payer": "MemberName",
+  "involved": ["MemberA", "MemberB"],
+  "splitType": "equal"
+}]`
                             },
                             {
                                 type: 'image_url',
@@ -112,7 +125,7 @@ Return ONLY a JSON array, no other text:
         if (!response.ok) {
             const errorText = await response.text();
             console.error('OpenRouter API error:', response.status, errorText);
-            return new Response(JSON.stringify({ 
+            return new Response(JSON.stringify({
                 error: `OpenRouter API error: ${response.status}`,
                 details: errorText,
                 success: false,
@@ -127,18 +140,18 @@ Return ONLY a JSON array, no other text:
         console.log('OpenRouter Response received');
 
         let transactions = [];
-        
+
         if (data.choices && data.choices[0] && data.choices[0].message) {
             const content = data.choices[0].message.content;
             console.log('AI Content:', content);
-            
+
             try {
                 let cleanContent = content.trim().replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-                
+
                 const jsonMatch = cleanContent.match(/\[[\s\S]*\]/);
                 if (jsonMatch) {
                     const parsed = JSON.parse(jsonMatch[0]);
-                    
+
                     transactions = parsed
                         .filter(tx => tx.amount && parseFloat(tx.amount) > 0 && tx.description)
                         .map(tx => ({
@@ -146,13 +159,16 @@ Return ONLY a JSON array, no other text:
                             description: tx.description,
                             category: mapCategory(tx.description, tx.category),
                             amount: Math.round(parseFloat(tx.amount) * 100) / 100,
-                            txType: tx.type === 'income' ? 'income' : 'expense'
+                            txType: tx.type === 'income' ? 'income' : 'expense',
+                            payer: tx.payer || (members && members[0]) || '',
+                            involved: tx.involved || members || [],
+                            splitType: tx.splitType || 'equal'
                         }));
-                    
+
                     transactions = transactions.filter((item, index, self) =>
-                        index === self.findIndex(t => 
-                            t.date === item.date && 
-                            t.description === item.description && 
+                        index === self.findIndex(t =>
+                            t.date === item.date &&
+                            t.description === item.description &&
                             Math.abs(t.amount - item.amount) < 0.01
                         )
                     );
@@ -162,8 +178,8 @@ Return ONLY a JSON array, no other text:
             }
         }
 
-        return new Response(JSON.stringify({ 
-            success: transactions.length > 0, 
+        return new Response(JSON.stringify({
+            success: transactions.length > 0,
             transactions: transactions,
             count: transactions.length,
             source: 'openrouter-nvidia-nemotron-vl'
@@ -173,7 +189,7 @@ Return ONLY a JSON array, no other text:
 
     } catch (error) {
         console.error('Error:', error);
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             error: error.message,
             success: false,
             transactions: []
@@ -187,11 +203,11 @@ Return ONLY a JSON array, no other text:
 function mapCategory(name, originalCat) {
     const lowerName = (name || '').toLowerCase();
     const lowerCat = (originalCat || '').toLowerCase();
-    
+
     if (lowerName.includes('tangerpay')) return 'laundry';
     if (lowerName.includes('qut') || lowerName.includes('queensland university')) return 'education';
     if (lowerName.includes('iglu')) return 'accommodation';
-    
+
     if (lowerCat.includes('eating out') || lowerCat.includes('takeaway')) return 'food';
     if (lowerCat.includes('groceries')) return 'groceries';
     if (lowerCat.includes('education')) return 'education';
@@ -200,10 +216,10 @@ function mapCategory(name, originalCat) {
     if (lowerCat.includes('entertainment')) return 'entertainment';
     if (lowerCat.includes('transport')) return 'vehicle';
     if (lowerCat.includes('health')) return 'health';
-    
+
     if (lowerName.includes('kfc') || lowerName.includes('mcdonald') || lowerName.includes('cafe')) return 'food';
     if (lowerName.includes('mart') || lowerName.includes('coles') || lowerName.includes('woolworths')) return 'groceries';
     if (lowerName.includes('target')) return 'shopping';
-    
+
     return 'other';
 }

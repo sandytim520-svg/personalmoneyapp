@@ -2243,10 +2243,18 @@
                     const apiUrl = window.location.origin + '/api/analyze-image';
                     console.log('Calling API:', apiUrl);
 
+                    // Pass current book members to context
+                    const contextMembers = isPersonalBook ? [currentBook.owner] : bookMembers;
+
                     const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: imageData, prompt: prompt || '' })
+                        body: JSON.stringify({
+                            image: imageData,
+                            prompt: prompt || '',
+                            members: contextMembers,
+                            currency: currentBook.currency
+                        })
                     });
 
                     console.log('Response status:', response.status);
@@ -2290,6 +2298,14 @@
 
 
                         for (const tx of data.transactions) {
+                            // Validate members from AI response
+                            const validPayer = contextMembers.includes(tx.payer) ? tx.payer : contextMembers[0];
+                            const validInvolved = (tx.involved && Array.isArray(tx.involved))
+                                ? tx.involved.filter(m => contextMembers.includes(m))
+                                : contextMembers;
+
+                            const finalInvolved = validInvolved.length > 0 ? validInvolved : contextMembers;
+
                             const payload = {
                                 date: tx.date,
                                 description: tx.description,
@@ -2299,9 +2315,9 @@
                                 amountTWD: Math.round(tx.amount * activeRate),
                                 category: tx.category,
                                 txType: tx.txType,
-                                payer: isPersonalBook ? currentBook.owner : bookMembers[0],
-                                involved: isPersonalBook ? [currentBook.owner] : bookMembers,
-                                splitType: 'equal',
+                                payer: validPayer,
+                                involved: finalInvolved,
+                                splitType: tx.splitType || 'equal',
                                 createdAt: firebase.database.ServerValue.TIMESTAMP
                             };
                             await db.ref(path).push(payload);
