@@ -1486,10 +1486,15 @@
 
             // Member reorder with up/down buttons (mobile-friendly)
             const moveMember = (name, direction) => {
-                if (!userId) return;
+                if (!userId) {
+                    console.log('moveMember: no userId');
+                    return;
+                }
 
                 const entries = Object.entries(globalMembers);
                 const index = entries.findIndex(([n]) => n === name);
+
+                console.log('moveMember:', name, direction, 'index:', index, 'total:', entries.length);
 
                 if (direction === 'up' && index <= 0) return;
                 if (direction === 'down' && index >= entries.length - 1) return;
@@ -1499,13 +1504,21 @@
                 // Swap positions
                 [entries[index], entries[newIndex]] = [entries[newIndex], entries[index]];
 
-                // Reconstruct object and save
+                // Reconstruct object
                 const newMembers = {};
                 entries.forEach(([n, a]) => { newMembers[n] = a; });
 
+                // Update local state immediately for visual feedback
+                setGlobalMembers(newMembers);
+
+                // Save to Firebase
                 db.ref('users/' + userId + '/settings/globalMembers').set(newMembers)
-                    .then(() => console.log('Member order updated'))
-                    .catch(err => console.error('Failed to update member order:', err));
+                    .then(() => console.log('Member order saved to Firebase'))
+                    .catch(err => {
+                        console.error('Failed to save member order:', err);
+                        // Revert on error
+                        setGlobalMembers(globalMembers);
+                    });
             };
 
 
@@ -2201,8 +2214,18 @@
                     if (data.success && data.transactions && data.transactions.length > 0) {
                         console.log(`✅ AI (${data.source || 'unknown'}) found ${data.count} transactions`);
 
-                        const path = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
+                        // Use proper data path with userId
+                        const dataUserId = isGuest ? shareUserId : userId;
+                        if (!dataUserId) {
+                            alert('請先登入');
+                            setIsScanning(false);
+                            return;
+                        }
+                        const path = currentBookId === 'default'
+                            ? 'users/' + dataUserId + '/transactions'
+                            : 'users/' + dataUserId + '/books/' + currentBookId + '/transactions';
                         let savedCount = 0;
+
 
                         for (const tx of data.transactions) {
                             const payload = {
@@ -2322,9 +2345,18 @@
                     if (uniqueResults.length === 0) {
                         alert(t.no_valid_records || '未找到有效的交易記錄');
                     } else {
-                        // Directly save to Firebase
-                        const path = currentBookId === 'default' ? 'transactions' : 'books/' + currentBookId + '/transactions';
+                        // Directly save to Firebase with proper path
+                        const dataUserId = isGuest ? shareUserId : userId;
+                        if (!dataUserId) {
+                            alert('請先登入');
+                            setIsScanning(false);
+                            return;
+                        }
+                        const path = currentBookId === 'default'
+                            ? 'users/' + dataUserId + '/transactions'
+                            : 'users/' + dataUserId + '/books/' + currentBookId + '/transactions';
                         let savedCount = 0;
+
 
                         for (const tx of uniqueResults) {
                             const payload = {
