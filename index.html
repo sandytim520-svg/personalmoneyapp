@@ -915,11 +915,16 @@
                     await db.ref('users/' + userId + '/booksMeta/' + bookId).update({ isPublic: false });
                 } else {
                     // Make public: copy to publicBooks
+                    // Get current book members from booksMeta
+                    const currentBookData = booksMeta[bookId];
+                    const bookMembersList = currentBookData?.members || Object.keys(globalMembers);
+
                     const publicBookData = {
                         ...book,
                         isPublic: true,
                         ownerId: userId,
-                        globalMembers: globalMembers
+                        globalMembers: globalMembers,
+                        members: bookMembersList
                     };
 
                     // Copy book meta
@@ -2651,34 +2656,6 @@
                             <button onClick={() => { setIsDeletedBooksOpen(true); setIsMenuSettingsOpen(false); }} className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-200"><Icons.Trash /> {t.recently_deleted} {Object.keys(deletedBooks).length > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{Object.keys(deletedBooks).length}</span>}</button>
                         </div>
 
-                        {/* Open Book Toggle */}
-                        {!isGuest && (
-                            <div className="mt-4 p-4 bg-gray-50 rounded-2xl">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <div className="font-bold text-gray-800 flex items-center gap-2">
-                                            <span>🌐</span> {t.open_book}
-                                        </div>
-                                        <p className="text-xs text-gray-500 mt-1">{t.open_book_desc}</p>
-                                    </div>
-                                    <button
-                                        onClick={() => togglePublicBook(currentBookId)}
-                                        className={`w-12 h-7 rounded-full transition-all relative ${currentBook.isPublic ? 'bg-green-500' : 'bg-gray-300'}`}
-                                    >
-                                        <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${currentBook.isPublic ? 'right-1' : 'left-1'}`}></div>
-                                    </button>
-                                </div>
-                                {currentBook.isPublic && (
-                                    <button
-                                        onClick={copyShareLink}
-                                        className="w-full mt-3 bg-green-500 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                                    >
-                                        🔗 {t.copy_link}
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
                         {/* User Profile & Sign Out */}
                         {userInfo && (
                             <div className="mt-6 pt-4 border-t border-gray-200">
@@ -2779,34 +2756,6 @@
                                     </div>
                                 )}
                             </div>
-
-                            {/* Open Book Toggle */}
-                            {!isGuest && (
-                                <div className="bg-white rounded-2xl p-4 shadow-sm">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <div className="font-bold text-gray-800 flex items-center gap-2">
-                                                <span>🌐</span> {t.open_book}
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1">{t.open_book_desc}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => togglePublicBook(currentBookId)}
-                                            className={`w-12 h-7 rounded-full transition-all relative ${currentBook.isPublic ? 'bg-green-500' : 'bg-gray-300'}`}
-                                        >
-                                            <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${currentBook.isPublic ? 'right-1' : 'left-1'}`}></div>
-                                        </button>
-                                    </div>
-                                    {currentBook.isPublic && (
-                                        <button
-                                            onClick={copyShareLink}
-                                            className="w-full mt-3 bg-green-500 text-white py-2 rounded-xl font-bold text-sm flex items-center justify-center gap-2"
-                                        >
-                                            🔗 {t.copy_link}
-                                        </button>
-                                    )}
-                                </div>
-                            )}
 
                             {/* History Button */}
                             <button onClick={() => { setIsHistoryOpen(true); setIsSettingsOpen(false); setViewingSettlement(null); setIsExportMode(false); setSelectedSettlements([]); }} className="w-full bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
