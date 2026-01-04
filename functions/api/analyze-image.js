@@ -33,9 +33,9 @@ export async function onRequest(context) {
     }
 
     try {
-        if (!env.OPENROUTER_API_KEY) {
+        if (!env.GEMINI_API_KEY) {
             return new Response(JSON.stringify({
-                error: 'OPENROUTER_API_KEY not configured',
+                error: 'GEMINI_API_KEY not configured',
                 success: false,
                 transactions: []
             }), {
@@ -53,37 +53,34 @@ export async function onRequest(context) {
             });
         }
 
-        // Ensure image has proper data URL format
-        let imageUrl = image;
-        if (!image.startsWith('data:')) {
-            imageUrl = `data:image/png;base64,${image}`;
+        // Parse base64 image
+        // Input is likely "data:image/jpeg;base64,..."
+        const match = image.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
+        let mimeType = 'image/jpeg'; // Default
+        let base64Data = image;
+
+        if (match) {
+            mimeType = match[1];
+            base64Data = match[2];
+        } else if (image.startsWith('data:')) {
+            // Handle simple split if regex fails but header exists
+            const parts = image.split(',');
+            if (parts.length === 2) {
+                const header = parts[0];
+                const mimeMatch = header.match(/:(.*?);/);
+                if (mimeMatch) mimeType = mimeMatch[1];
+                base64Data = parts[1];
+            }
         }
 
-        console.log('Calling OpenRouter API...');
+        console.log('Calling Google Gemini API...');
         console.log('User Prompt:', prompt);
         console.log('Members:', members);
 
         const memberListStr = members && members.length > 0 ? members.join(', ') : 'No specific members provided';
         const currencyStr = currency || 'TWD';
 
-        // Call OpenRouter API with free model
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${env.OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://personalmoneyapp.pages.dev',
-                'X-Title': 'Personal Money App'
-            },
-            body: JSON.stringify({
-                model: 'nvidia/nemotron-nano-12b-v2-vl:free',
-                messages: [
-                    {
-                        role: 'user',
-                        content: [
-                            {
-                                type: 'text',
-                                text: `Analyze this bank app screenshot or receipt.
+        const systemPrompt = `Analyze this bank app screenshot or receipt.
 Valid Members for this ledger: [${memberListStr}]
 Currency: ${currencyStr}
 
@@ -95,6 +92,7 @@ Task:
 2. Apply USER INSTRUCTIONS to modify 'payer', 'involved' list, or 'description' if specified.
 3. If no user instructions, use defaults (payer=unknown, split=equal).
 
+Return JSON Array ONLY:
 [{
   "date": "YYYY-MM-DD",
   "description": "Item Name", 
@@ -104,33 +102,39 @@ Task:
   "payer": "MemberName",
   "involved": ["MemberA", "MemberB"],
   "splitType": "equal"
-}]
+}]`;
 
-IMPORTANT:
-- First, extract the transaction details from the image.
-- Then, apply the USER INSTRUCTIONS (if any) to set 'payer', 'involved', or 'description'.
-- If the USER INSTRUCTIONS are empty or unclear, ignore them and just extract the transaction.
-- Always return valid JSON.`
-                            },
-                            {
-                                type: 'image_url',
-                                image_url: {
-                                    url: imageUrl
-                                }
+        // Call Google Gemini API
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: systemPrompt },
+                        {
+                            inline_data: {
+                                mime_type: mimeType,
+                                data: base64Data
                             }
-                        ]
-                    }
-                ],
-                max_tokens: 4096,
-                temperature: 0.1
+                        }
+                    ]
+                }],
+                generationConfig: {
+                    response_mime_type: "application/json"
+                }
             })
         });
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('OpenRouter API error:', response.status, errorText);
+            console.error('Gemini API error:', response.status, errorText);
             return new Response(JSON.stringify({
-                error: `OpenRouter API error: ${response.status}`,
+                error: `Gemini API error: ${response.status}`,
                 details: errorText,
                 success: false,
                 transactions: []
@@ -141,42 +145,42 @@ IMPORTANT:
         }
 
         const data = await response.json();
-        console.log('OpenRouter Response received');
+        console.log('Gemini Response received');
 
         let transactions = [];
 
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-            const content = data.choices[0].message.content;
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+            const content = data.candidates[0].content.parts[0].text;
             console.log('AI Content:', content);
 
             try {
-                let cleanContent = content.trim().replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+                // Gemini usually returns clean JSON if response_mime_type is set, but parsing is safe
+                const parsed = JSON.parse(content);
 
-                const jsonMatch = cleanContent.match(/\[[\s\S]*\]/);
-                if (jsonMatch) {
-                    const parsed = JSON.parse(jsonMatch[0]);
+                // Handle if it returns an object with a "transactions" key or just the array
+                const txArray = Array.isArray(parsed) ? parsed : (parsed.transactions || []);
 
-                    transactions = parsed
-                        .filter(tx => tx.amount && parseFloat(tx.amount) > 0 && tx.description)
-                        .map(tx => ({
-                            date: tx.date || new Date().toISOString().split('T')[0],
-                            description: tx.description,
-                            category: mapCategory(tx.description, tx.category),
-                            amount: Math.round(parseFloat(tx.amount) * 100) / 100,
-                            txType: tx.type === 'income' ? 'income' : 'expense',
-                            payer: tx.payer || (members && members[0]) || '',
-                            involved: tx.involved || members || [],
-                            splitType: tx.splitType || 'equal'
-                        }));
+                transactions = txArray
+                    .filter(tx => tx.amount && parseFloat(tx.amount) > 0 && tx.description)
+                    .map(tx => ({
+                        date: tx.date || new Date().toISOString().split('T')[0],
+                        description: tx.description,
+                        category: mapCategory(tx.description, tx.category),
+                        amount: Math.round(parseFloat(tx.amount) * 100) / 100,
+                        txType: tx.type === 'income' ? 'income' : 'expense',
+                        payer: tx.payer || (members && members[0]) || '',
+                        involved: tx.involved || members || [],
+                        splitType: tx.splitType || 'equal'
+                    }));
 
-                    transactions = transactions.filter((item, index, self) =>
-                        index === self.findIndex(t =>
-                            t.date === item.date &&
-                            t.description === item.description &&
-                            Math.abs(t.amount - item.amount) < 0.01
-                        )
-                    );
-                }
+                // Deduplicate simple
+                transactions = transactions.filter((item, index, self) =>
+                    index === self.findIndex(t =>
+                        t.date === item.date &&
+                        t.description === item.description &&
+                        Math.abs(t.amount - item.amount) < 0.01
+                    )
+                );
             } catch (parseError) {
                 console.error('Parse error:', parseError);
             }
@@ -186,7 +190,7 @@ IMPORTANT:
             success: transactions.length > 0,
             transactions: transactions,
             count: transactions.length,
-            source: 'openrouter-nvidia-nemotron-vl'
+            source: 'gemini-1.5-flash-official'
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
