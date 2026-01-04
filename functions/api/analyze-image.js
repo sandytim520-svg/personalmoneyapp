@@ -118,21 +118,19 @@ Categories: food, transport, groceries, shopping, entertainment, health, educati
 
 If no transactions visible, return: []`;
 
-        // List of free vision models to try (in order of preference)
+        // List of free vision models to try via OpenRouter (in order of preference)
         const freeModels = [
             'qwen/qwen2.5-vl-72b-instruct:free',
             'meta-llama/llama-4-maverick:free',
-            'nvidia/llama-3.1-nemotron-70b-instruct:free',
-            'nvidia/llama-3.3-nemotron-super-49b-v1:free',
             'google/gemma-3-27b-it:free',
             'google/gemini-2.0-flash-exp:free'
         ];
 
         let lastError = null;
-        let usedModel = null;
 
+        // Try OpenRouter models first
         for (const model of freeModels) {
-            console.log(`Trying model: ${model}`);
+            console.log(`Trying OpenRouter model: ${model}`);
 
             try {
                 const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -171,7 +169,6 @@ If no transactions visible, return: []`;
                     const data = await response.json();
 
                     if (data.choices && data.choices[0] && data.choices[0].message) {
-                        usedModel = model;
                         const content = data.choices[0].message.content;
                         console.log(`Success with ${model}:`, content);
 
@@ -200,6 +197,70 @@ If no transactions visible, return: []`;
                 console.error(`Error with ${model}:`, modelError);
                 lastError = { message: modelError.message };
                 continue;
+            }
+        }
+
+        // Fallback to Groq API if all OpenRouter models failed
+        if (env.GROQ_API_KEY) {
+            console.log('Trying Groq API as fallback...');
+
+            try {
+                const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${env.GROQ_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'llama-3.2-90b-vision-preview',
+                        messages: [
+                            {
+                                role: 'user',
+                                content: [
+                                    {
+                                        type: 'text',
+                                        text: systemPrompt
+                                    },
+                                    {
+                                        type: 'image_url',
+                                        image_url: {
+                                            url: imageUrl
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        temperature: 0.1,
+                        max_tokens: 2000
+                    })
+                });
+
+                if (groqResponse.ok) {
+                    const groqData = await groqResponse.json();
+
+                    if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
+                        const content = groqData.choices[0].message.content;
+                        console.log('Success with Groq:', content);
+
+                        const transactions = parseTransactions(content, members);
+
+                        return new Response(JSON.stringify({
+                            success: transactions.length > 0,
+                            transactions: transactions,
+                            count: transactions.length,
+                            source: 'groq-llama-3.2-90b-vision'
+                        }), {
+                            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                        });
+                    }
+                } else {
+                    const groqError = await groqResponse.text();
+                    console.log('Groq failed:', groqResponse.status, groqError);
+                    lastError = { status: groqResponse.status, text: groqError, provider: 'groq' };
+                }
+            } catch (groqError) {
+                console.error('Groq error:', groqError);
+                lastError = { message: groqError.message, provider: 'groq' };
             }
         }
 
