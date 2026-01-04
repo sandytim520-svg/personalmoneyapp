@@ -879,8 +879,23 @@
                         setShareBookId(bookParam);
                         setCurrentBookId(bookParam);
                     }
+
+                    // Sign in anonymously for guests
+                    firebase.auth().signInAnonymously()
+                        .then((result) => {
+                            const guestId = result.user.uid;
+                            // Register shared access
+                            db.ref('sharedAccess/' + shareParam + '/' + guestId).set({
+                                joinedAt: Date.now(),
+                                bookId: bookParam || 'default'
+                            });
+                        })
+                        .catch((error) => {
+                            console.error('Anonymous sign-in error:', error);
+                        });
                 }
             }, []);
+
 
             // Google Sign-in function
             const signInWithGoogle = async () => {
@@ -1073,51 +1088,47 @@
             // Firebase Auth State Listener
             useEffect(() => {
                 if (isGuest && shareUserId) {
-                    // Guest mode: load public books
-                    setAuthLoading(false);
+                    // Guest mode: load data directly from owner's path
+                    // Wait for anonymous auth to complete
+                    const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+                        if (user) {
+                            // Guest is now authenticated anonymously
+                            setAuthLoading(false);
 
-                    // If specific book ID is provided, load just that book
-                    if (shareBookId) {
-                        const bookRef = db.ref('publicBooks/' + shareBookId);
-                        bookRef.on('value', (snapshot) => {
-                            const val = snapshot.val();
-                            if (val) {
-                                setPublicBooks({ [shareBookId]: val });
-                                setCurrentBookId(shareBookId);
-                                // Set globalMembers from the public book data for guest mode
-                                if (val.globalMembers) {
-                                    setGlobalMembers(val.globalMembers);
+                            // Load owner's booksMeta
+                            const metaRef = db.ref('users/' + shareUserId + '/booksMeta');
+                            metaRef.on('value', (snapshot) => {
+                                const val = snapshot.val();
+                                if (val) {
+                                    setBooksMeta(val);
+                                    // If specific book was requested, use that
+                                    if (shareBookId && val[shareBookId]) {
+                                        setCurrentBookId(shareBookId);
+                                    } else {
+                                        // Otherwise use first available book
+                                        const firstBookId = Object.keys(val)[0];
+                                        if (firstBookId) setCurrentBookId(firstBookId);
+                                    }
                                 }
-                            } else {
-                                setPublicBooks({});
-                            }
-                        });
-                        return () => bookRef.off();
-                    }
+                            });
 
+                            // Load owner's globalMembers
+                            const membersRef = db.ref('users/' + shareUserId + '/settings/globalMembers');
+                            membersRef.on('value', (snapshot) => {
+                                const val = snapshot.val();
+                                if (val) setGlobalMembers(val);
+                            });
 
-                    // Fallback: load all public books by owner
-                    const publicBooksRef = db.ref('publicBooks');
-                    publicBooksRef.orderByChild('ownerId').equalTo(shareUserId).on('value', (snapshot) => {
-                        const val = snapshot.val();
-                        if (val) {
-                            setPublicBooks(val);
-                            const firstBookId = Object.keys(val)[0];
-                            if (firstBookId && !val[currentBookId]) {
-                                setCurrentBookId(firstBookId);
-                            }
-                            // Set globalMembers from the first public book's data for guest mode
-                            const bookToUse = val[currentBookId] || val[firstBookId];
-                            if (bookToUse && bookToUse.globalMembers) {
-                                setGlobalMembers(bookToUse.globalMembers);
-                            }
-                        } else {
-                            setPublicBooks({});
+                            return () => {
+                                metaRef.off();
+                                membersRef.off();
+                            };
                         }
                     });
 
-                    return () => publicBooksRef.off();
+                    return () => unsubscribe();
                 }
+
 
                 // Normal mode: Listen for auth state
                 const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
@@ -1139,38 +1150,33 @@
                 return () => unsubscribe();
             }, [isGuest, shareUserId]);
 
-            // Helper function to get data path based on public/private status
+            // Helper function to get data path - for guests, use owner's (shareUserId) path
             const getDataPath = (basePath, bookId) => {
-                const book = booksMeta[bookId] || publicBooks[bookId];
-                if (book && book.isPublic) {
-                    return 'publicBooks/' + bookId + '/' + basePath;
-                }
-                if (isGuest) {
-                    return 'publicBooks/' + bookId + '/' + basePath;
-                }
-                if (!userId) return null;
+                const dataUserId = isGuest ? shareUserId : userId;
+                if (!dataUserId) return null;
                 if (bookId === 'default') {
-                    return 'users/' + userId + '/' + basePath;
+                    return 'users/' + dataUserId + '/' + basePath;
                 }
-                return 'users/' + userId + '/books/' + bookId + '/' + basePath;
+                return 'users/' + dataUserId + '/books/' + bookId + '/' + basePath;
             };
 
-            // Helper function to get user base path
+            // Helper function to get user base path - for guests, use owner's path
             const getUserPath = (path) => {
-                if (!userId) return null;
-                return 'users/' + userId + '/' + path;
+                const dataUserId = isGuest ? shareUserId : userId;
+                if (!dataUserId) return null;
+                return 'users/' + dataUserId + '/' + path;
             };
 
-            // For guest mode, use publicBooks data; for normal mode, use booksMeta
-            const currentBook = (isGuest ? publicBooks[currentBookId] : booksMeta[currentBookId]) || { name: t.default_book, currency: 'TWD', customRate: 1, members: ['慧欣', '俊廷'], isPersonal: false };
+            // Current book from booksMeta (now works for both guest and owner)
+            const currentBook = booksMeta[currentBookId] || { name: t.default_book, currency: 'TWD', customRate: 1, members: ['A', 'B'], isPersonal: false };
             const isPersonalBook = currentBook.isPersonal || false;
 
-            // For guests, use globalMembers from publicBooks if available
-            const effectiveGlobalMembers = isGuest && currentBook.globalMembers ? currentBook.globalMembers : globalMembers;
-            const validBookMembers = (currentBook.members || []).filter(m => effectiveGlobalMembers.hasOwnProperty(m));
-            const bookMembers = validBookMembers.length > 0 ? validBookMembers : Object.keys(effectiveGlobalMembers).slice(0, 2);
+            // Use globalMembers directly (now synced for guests too)
+            const validBookMembers = (currentBook.members || []).filter(m => globalMembers.hasOwnProperty(m));
+            const bookMembers = validBookMembers.length > 0 ? validBookMembers : Object.keys(globalMembers).slice(0, 2);
             const currentCurrency = CURRENCIES.find(c => c.code === currentBook.currency) || CURRENCIES[0];
             const activeRate = currentBook.customRate || currentCurrency.rate || 1;
+
 
             // Combine default and custom categories
             const allCategories = React.useMemo(() => {
@@ -1297,14 +1303,13 @@
                 if (authLoading) return;
                 if (!userId && !isGuest) return;
 
-                let clearedPath;
-                if (isGuest) {
-                    clearedPath = 'publicBooks/' + currentBookId + '/clearedTransactions';
-                } else {
-                    clearedPath = currentBookId === 'default'
-                        ? 'users/' + userId + '/clearedTransactions'
-                        : 'users/' + userId + '/books/' + currentBookId + '/clearedTransactions';
-                }
+                const dataUserId = isGuest ? shareUserId : userId;
+                if (!dataUserId) return;
+
+                const clearedPath = currentBookId === 'default'
+                    ? 'users/' + dataUserId + '/clearedTransactions'
+                    : 'users/' + dataUserId + '/books/' + currentBookId + '/clearedTransactions';
+
                 const clearedRef = db.ref(clearedPath);
                 clearedRef.on('value', (snapshot) => {
                     const val = snapshot.val();
@@ -1312,7 +1317,7 @@
                     else setClearedTransactions({});
                 });
                 return () => clearedRef.off();
-            }, [currentBookId, userId, authLoading, isGuest]);
+            }, [currentBookId, userId, authLoading, isGuest, shareUserId]);
 
             useEffect(() => {
                 if (currentBook.currency !== 'TWD' && userId) {
@@ -1324,28 +1329,25 @@
                 if (authLoading) return;
                 if (!userId && !isGuest) return;
 
+                const dataUserId = isGuest ? shareUserId : userId;
+                if (!dataUserId) return;
+
                 setLoading(true);
                 localStorage.setItem('lastBookId', currentBookId);
 
-                let txPath, stPath, recurringPath;
-                if (isGuest) {
-                    txPath = 'publicBooks/' + currentBookId + '/transactions';
-                    stPath = 'publicBooks/' + currentBookId + '/settlements';
-                    recurringPath = 'publicBooks/' + currentBookId + '/recurring';
-                } else {
-                    txPath = currentBookId === 'default'
-                        ? 'users/' + userId + '/transactions'
-                        : 'users/' + userId + '/books/' + currentBookId + '/transactions';
-                    stPath = currentBookId === 'default'
-                        ? 'users/' + userId + '/settlements'
-                        : 'users/' + userId + '/books/' + currentBookId + '/settlements';
-                    recurringPath = currentBookId === 'default'
-                        ? 'users/' + userId + '/recurring'
-                        : 'users/' + userId + '/books/' + currentBookId + '/recurring';
-                }
+                const txPath = currentBookId === 'default'
+                    ? 'users/' + dataUserId + '/transactions'
+                    : 'users/' + dataUserId + '/books/' + currentBookId + '/transactions';
+                const stPath = currentBookId === 'default'
+                    ? 'users/' + dataUserId + '/settlements'
+                    : 'users/' + dataUserId + '/books/' + currentBookId + '/settlements';
+                const recurringPath = currentBookId === 'default'
+                    ? 'users/' + dataUserId + '/recurring'
+                    : 'users/' + dataUserId + '/books/' + currentBookId + '/recurring';
 
                 const txRef = db.ref(txPath);
                 const stRef = db.ref(stPath);
+
                 const handleTx = (snapshot) => {
                     const data = snapshot.val();
                     if (data) {
@@ -1715,17 +1717,17 @@
             const handleSave = () => {
                 if (!formData.description || (!userId && !isGuest)) return alert(t.alert_input);
 
-                // Determine the path based on mode
+                // Determine the path based on mode - guests use owner's path
+                const dataUserId = isGuest ? shareUserId : userId;
                 let path;
-                if (isGuest) {
-                    path = 'publicBooks/' + currentBookId + '/transactions';
-                } else if (isPersonalBook) {
-                    path = 'users/' + userId + '/books/' + currentBookId + '/transactions';
+                if (isPersonalBook) {
+                    path = 'users/' + dataUserId + '/books/' + currentBookId + '/transactions';
                 } else {
                     path = currentBookId === 'default'
-                        ? 'users/' + userId + '/transactions'
-                        : 'users/' + userId + '/books/' + currentBookId + '/transactions';
+                        ? 'users/' + dataUserId + '/transactions'
+                        : 'users/' + dataUserId + '/books/' + currentBookId + '/transactions';
                 }
+
 
                 if (isPersonalBook) {
                     if (!formData.amount) return alert(t.alert_input);
@@ -1760,17 +1762,14 @@
 
             const handleDelete = (id) => {
                 if (confirm(t.confirm_delete)) {
-                    let path;
-                    if (isGuest) {
-                        path = 'publicBooks/' + currentBookId + '/transactions';
-                    } else {
-                        path = currentBookId === 'default'
-                            ? 'users/' + userId + '/transactions'
-                            : 'users/' + userId + '/books/' + currentBookId + '/transactions';
-                    }
+                    const dataUserId = isGuest ? shareUserId : userId;
+                    const path = currentBookId === 'default'
+                        ? 'users/' + dataUserId + '/transactions'
+                        : 'users/' + dataUserId + '/books/' + currentBookId + '/transactions';
                     db.ref(path).child(id).remove();
                 }
             };
+
 
             const handleSettleUp = () => {
                 if (transactions.length === 0 || !userId) return;

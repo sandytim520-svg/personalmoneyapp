@@ -2,8 +2,16 @@
   "rules": {
     "users": {
       "$uid": {
-        ".read": "auth != null && $uid === auth.uid",
-        ".write": "auth != null && $uid === auth.uid"
+        ".read": "auth != null && ($uid === auth.uid || root.child('sharedAccess').child($uid).child(auth.uid).exists())",
+        ".write": "auth != null && ($uid === auth.uid || root.child('sharedAccess').child($uid).child(auth.uid).exists())"
+      }
+    },
+    "sharedAccess": {
+      "$ownerId": {
+        "$guestId": {
+          ".read": "auth != null && auth.uid === $guestId",
+          ".write": "auth != null && (auth.uid === $ownerId || auth.uid === $guestId)"
+        }
       }
     },
     "publicBooks": {
