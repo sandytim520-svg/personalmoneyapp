@@ -65,23 +65,54 @@ export async function onRequest(context) {
 
         const memberListStr = members && members.length > 0 ? members.join(', ') : 'No specific members provided';
         const currencyStr = currency || 'TWD';
+        const isGroupLedger = members && members.length > 1;
+        const memberCount = members ? members.length : 1;
 
-        const systemPrompt = `You are a financial transaction analyzer. Analyze this image of bank statement, receipt, or transaction list.
+        // Different prompts for group vs personal ledgers
+        const systemPrompt = isGroupLedger
+            ? `You are analyzing a GROUP LEDGER screenshot. This is a shared expense tracker between multiple people.
 
-Valid Members: [${memberListStr}]
+Valid Members in this group: [${memberListStr}] (${memberCount} people total)
+Currency: ${currencyStr}
+
+USER INSTRUCTIONS: "${prompt || 'None'}"
+
+CRITICAL - How to read GROUP LEDGER screenshots:
+1. Each transaction card shows: date, description, amount
+2. PAYER IDENTIFICATION: Look for a colored avatar/circle with a Chinese character (like "慧", "俊") next to each transaction - this indicates WHO PAID. Match this character to the member names.
+3. SPLIT INFO: Look for text like "2人分", "3人分", "4人分" which means "split between X people". 
+   - If you see "2人分" with 4 members in the group, the split is NOT equal among all - only 2 people are involved.
+   - The number in "X人分" tells you how many people share this expense.
+
+SPLIT TYPE RULES:
+- If "X人分" matches the total member count (${memberCount}人分), use splitType: "equal" and include ALL members in "involved"
+- If "X人分" is LESS than total members, use splitType: "equal" but only include X members in "involved" (payer + others visible or specified)
+- If user instructions mention specific amounts per person (AB分), use splitType: "custom"
+
+IMPORTANT: 
+- The payer shown in the image is the ACTUAL payer, do NOT default to first member
+- Read the avatar/name indicator carefully to identify the correct payer
+- Match the character shown (e.g., "慧") to the full member name (e.g., "慧欣")
+
+Respond with ONLY a valid JSON array:
+[{"date":"YYYY-MM-DD","description":"Item Name","category":"food","amount":100.00,"type":"expense","payer":"ActualPayerName","involved":["Member1","Member2"],"splitType":"equal"}]
+
+Categories: food, transport, groceries, shopping, entertainment, health, education, accommodation, transfers, travel, communication, other
+
+If no transactions visible, return: []`
+            : `You are analyzing a PERSONAL ledger or receipt image.
+
 Currency: ${currencyStr}
 
 USER INSTRUCTIONS: "${prompt || 'None'}"
 
 Task:
 1. Extract ALL visible transactions: date, description/merchant, amount.
-2. Apply USER INSTRUCTIONS to determine payer and involved members.
-3. Default: payer = first member, involved = all members.
+2. For personal ledgers, payer is usually the account owner.
+3. Apply any USER INSTRUCTIONS provided.
 
-IMPORTANT: Respond with ONLY a valid JSON array. No explanations, no markdown.
-
-Format:
-[{"date":"YYYY-MM-DD","description":"Item Name","category":"food","amount":100.00,"type":"expense","payer":"MemberName","involved":["Member1","Member2"],"splitType":"equal"}]
+Respond with ONLY a valid JSON array:
+[{"date":"YYYY-MM-DD","description":"Item Name","category":"food","amount":100.00,"type":"expense","payer":"${members && members[0] ? members[0] : 'Me'}","involved":["${members && members[0] ? members[0] : 'Me'}"],"splitType":"equal"}]
 
 Categories: food, transport, groceries, shopping, entertainment, health, education, accommodation, transfers, travel, communication, other
 
