@@ -1184,8 +1184,10 @@
             const priorityMembers = ['俊廷', '慧欣'];
             const sortMembersByPriority = (members) => {
                 return [...members].sort((a, b) => {
-                    const aIndex = priorityMembers.indexOf(a);
-                    const bIndex = priorityMembers.indexOf(b);
+                    const nameA = a.trim();
+                    const nameB = b.trim();
+                    const aIndex = priorityMembers.indexOf(nameA);
+                    const bIndex = priorityMembers.indexOf(nameB);
                     if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
                     if (aIndex !== -1) return -1;
                     if (bIndex !== -1) return 1;
@@ -1193,15 +1195,44 @@
                 });
             };
 
-            // Sorted globalMembers entries for UI display
-            const sortedGlobalMemberEntries = Object.entries(globalMembers).sort((a, b) => {
-                const aIndex = priorityMembers.indexOf(a[0]);
-                const bIndex = priorityMembers.indexOf(b[0]);
-                if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-                if (aIndex !== -1) return -1;
-                if (bIndex !== -1) return 1;
-                return 0;
-            });
+            // Sorted globalMembers entries for UI display (Member Management)
+            const sortedGlobalMemberEntries = React.useMemo(() => {
+                return Object.entries(globalMembers).sort((a, b) => {
+                    const nameA = a[0].trim();
+                    const nameB = b[0].trim();
+                    const aIndex = priorityMembers.indexOf(nameA);
+                    const bIndex = priorityMembers.indexOf(nameB);
+                    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+                    if (aIndex !== -1) return -1;
+                    if (bIndex !== -1) return 1;
+                    // Default to alphabetical or creation order if no priority
+                    return 0;
+                });
+            }, [globalMembers]);
+
+            // Sorted members for Book Settings (Priority -> In Book -> Others)
+            const sortedBookSettingsMembers = React.useMemo(() => {
+                return Object.entries(globalMembers).sort((a, b) => {
+                    const nameA = a[0].trim();
+                    const nameB = b[0].trim();
+
+                    // 1. Priority Members
+                    const aPriority = priorityMembers.indexOf(nameA);
+                    const bPriority = priorityMembers.indexOf(nameB);
+                    if (aPriority !== -1 && bPriority !== -1) return aPriority - bPriority;
+                    if (aPriority !== -1) return -1;
+                    if (bPriority !== -1) return 1;
+
+                    // 2. Members currently in the book (Selected)
+                    const aInBook = bookMembers.includes(nameA);
+                    const bInBook = bookMembers.includes(nameB);
+                    if (aInBook && !bInBook) return -1;
+                    if (!aInBook && bInBook) return 1;
+
+                    // 3. Others
+                    return 0;
+                });
+            }, [globalMembers, bookMembers]);
 
             const validBookMembers = (currentBook.members || []).filter(m => globalMembers.hasOwnProperty(m));
             const bookMembers = sortMembersByPriority(validBookMembers.length > 0 ? validBookMembers : Object.keys(globalMembers).slice(0, 2));
@@ -2980,7 +3011,7 @@
                             {newBookType === 'personal' ? (
                                 <div><label className="text-xs font-bold text-gray-400 block mb-1">{t.select_owner}</label><div className="grid grid-cols-2 gap-2">{Object.entries(globalMembers).map(([name, avatar]) => (<button key={name} onClick={() => setNewBookOwner(name)} className={`p-2 rounded-xl font-bold border-2 text-sm flex items-center gap-2 ${newBookOwner === name ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-gray-100 text-gray-400'}`}><span>{avatar}</span> {name}</button>))}</div></div>
                             ) : (
-                                <div><label className="text-xs font-bold text-gray-400 block mb-1">{t.select_participants}</label><div className="grid grid-cols-2 gap-2">{Object.entries(globalMembers).map(([name, avatar]) => (<button key={name} onClick={() => toggleMemberSelection(name)} className={`p-2 rounded-xl font-bold border-2 text-sm flex items-center gap-2 ${selectedMembers.includes(name) ? 'border-black bg-gray-50 text-black' : 'border-gray-100 text-gray-400'}`}><span>{avatar}</span> {name}</button>))}</div></div>
+                                <div><label className="text-xs font-bold text-gray-400 block mb-1">{t.select_participants}</label><div className="grid grid-cols-2 gap-2">{sortedGlobalMemberEntries.map(([name, avatar]) => (<button key={name} onClick={() => toggleMemberSelection(name)} className={`p-2 rounded-xl font-bold border-2 text-sm flex items-center gap-2 ${selectedMembers.includes(name) ? 'border-black bg-gray-50 text-black' : 'border-gray-100 text-gray-400'}`}><span>{avatar}</span> {name}</button>))}</div></div>
                             )}
 
                             <div className="flex gap-3 pt-2"><button onClick={() => setIsAddBookOpen(false)} className="flex-1 py-3 font-bold text-gray-500 bg-gray-100 rounded-xl">{t.cancel}</button><button onClick={handleCreateBook} className="flex-1 py-3 font-bold text-white bg-black rounded-xl">{t.create}</button></div>
@@ -3020,7 +3051,7 @@
                                 ) : (
                                     <div className="space-y-2">
                                         <p className="text-sm text-gray-500 mb-2">{t.select_members}</p>
-                                        {Object.entries(globalMembers).map(([name, avatar]) => (
+                                        {sortedBookSettingsMembers.map(([name, avatar]) => (
                                             <div key={name} className={`flex justify-between items-center p-3 rounded-xl transition ${bookMembers.includes(name) ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
                                                 <div className="flex items-center gap-3"><span className="text-2xl">{avatar}</span><span className="font-bold text-gray-800">{name}</span></div>
                                                 <button onClick={() => toggleBookMember(name)} className={`w-8 h-8 rounded-full flex items-center justify-center ${bookMembers.includes(name) ? 'bg-green-500 text-white' : 'bg-gray-200'}`}>{bookMembers.includes(name) && <Icons.Check />}</button>
